@@ -11,7 +11,12 @@ struct Uniforms {
     viewport_size: vec2<f32>,
     camera_center: vec2<f32>,
     zoom: f32,
-    _pad: vec3<f32>,
+    // See rects.wgsl: three scalars, not `vec3<f32>`, to match the
+    // 32-byte Rust-side Uniforms exactly (`vec3<f32>` has 16-byte
+    // alignment in WGSL, which would grow this struct to 48 bytes).
+    _pad0: f32,
+    _pad1: f32,
+    _pad2: f32,
 };
 
 @group(0) @binding(0) var<uniform> u: Uniforms;
