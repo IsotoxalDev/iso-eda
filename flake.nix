@@ -127,6 +127,12 @@
           buildInputs = spikeBuildInputs;
         } // spikeEnv;
         spikeEguiArtifacts = spikesCraneLib.buildDepsOnly spikeEguiArgs;
+
+        spikeIcedArgs = spikeCrateArgs "spike-iced" {
+          nativeBuildInputs = spikeNativeBuildInputs;
+          buildInputs = spikeBuildInputs;
+        } // spikeEnv;
+        spikeIcedArtifacts = spikesCraneLib.buildDepsOnly spikeIcedArgs;
       in
       {
         packages = {
@@ -166,6 +172,11 @@
 
           spike-egui-build = spikesCraneLib.buildPackage (spikeEguiArgs // {
             cargoArtifacts = spikeEguiArtifacts;
+            doCheck = false;
+          });
+
+          spike-iced-build = spikesCraneLib.buildPackage (spikeIcedArgs // {
+            cargoArtifacts = spikeIcedArtifacts;
             doCheck = false;
           });
         };
