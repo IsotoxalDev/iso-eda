@@ -17,6 +17,7 @@ members = [
     "crates/eda-app",
     "crates/eda-cli",
 ]
+exclude = ["spikes"]
 
 [workspace.package]
 edition = "2021"
