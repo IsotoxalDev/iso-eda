@@ -8,7 +8,7 @@ Status: todo / doing / done.
 | ID | Task | Tier | Acceptance check | Status |
 | --- | --- | --- | --- | --- |
 | M0.1 | Workspace skeleton, flake (dev shell, package, checks), CI, empty crates, GPL headers, LICENSE | S | `nix develop` and `nix flake check` pass on a clean clone | done |
-| M0.2 | UI spike: throwaway GPUI, Slint and egui binaries drawing 200k rects, 50k segments, 5k labels with pan/zoom | F (analysis + ADR-001), S (the three binaries) | Frame times recorded; ADR-001 states the choice | todo |
+| M0.2 | UI spike: throwaway GPUI, Slint, iced and egui binaries drawing 200k rects, 50k segments, 5k labels with pan/zoom | F (analysis + ADR-001), S (the four binaries) | Frame times recorded; ADR-001 states the choice | todo |
 | M0.3 | App shell: window, docks, command palette, keymap file, theme tokens, empty canvas | S | Launches with `nix run`; palette runs a dummy command; theme switch works | todo |
 
 ## Phase 1 — Schematic + simulate
