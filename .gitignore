@@ -1,0 +1,5 @@
+/target
+/result
+/result-*
+tests/corpus/*
+!tests/corpus/.gitkeep

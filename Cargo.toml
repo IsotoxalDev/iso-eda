@@ -1,0 +1,23 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/eda-geom",
+    "crates/eda-db",
+    "crates/eda-cmd",
+    "crates/eda-xschem",
+    "crates/eda-pdk",
+    "crates/eda-netlist",
+    "crates/eda-sim",
+    "crates/eda-wave",
+    "crates/eda-gds",
+    "crates/eda-verify",
+    "crates/eda-render",
+    "crates/eda-script",
+    "crates/eda-ui",
+    "crates/eda-app",
+    "crates/eda-cli",
+]
+
+[workspace.package]
+edition = "2021"
+license = "GPL-3.0-or-later"
