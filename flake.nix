@@ -119,6 +119,14 @@
 
         spikeSceneArgs = spikeCrateArgs "scene" { };
         spikeSceneArtifacts = spikesCraneLib.buildDepsOnly spikeSceneArgs;
+
+        # Build-only checks: the sandbox has no GPU/display, so these only
+        # prove compilation (docs/adr/001-ui-toolkit.md "Nix sandbox").
+        spikeEguiArgs = spikeCrateArgs "spike-egui" {
+          nativeBuildInputs = spikeNativeBuildInputs;
+          buildInputs = spikeBuildInputs;
+        } // spikeEnv;
+        spikeEguiArtifacts = spikesCraneLib.buildDepsOnly spikeEguiArgs;
       in
       {
         packages = {
@@ -154,6 +162,11 @@
 
           spike-scene-test = spikesCraneLib.cargoNextest (spikeSceneArgs // {
             cargoArtifacts = spikeSceneArtifacts;
+          });
+
+          spike-egui-build = spikesCraneLib.buildPackage (spikeEguiArgs // {
+            cargoArtifacts = spikeEguiArtifacts;
+            doCheck = false;
           });
         };
 
