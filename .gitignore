@@ -3,3 +3,11 @@
 /result-*
 tests/corpus/*
 !tests/corpus/.gitkeep
+
+# spikes/ (M0.2, docs/adr/001-ui-toolkit.md): each spike/lib builds its
+# own target dir and may produce its own result symlink.
+spikes/*/target
+spikes/*/result
+spikes/*/result-*
+spikes/result
+spikes/result-*
