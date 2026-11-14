@@ -1,0 +1,24 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+[package]
+name = "spike-gpui"
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+
+[workspace]
+
+[[bin]]
+name = "spike-gpui"
+path = "src/main.rs"
+
+[dependencies]
+scene = { path = "../scene" }
+anyhow = "1"
+
+# Pinned to Rachana's verified-under-Nix revision (see docs/adr/001-ui-toolkit.md).
+# Bump only if an API the spike needs is actually missing at this rev.
+gpui = { git = "https://github.com/zed-industries/zed", rev = "137e677a0561eb7284cfad1bedccea70155e2473" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "137e677a0561eb7284cfad1bedccea70155e2473", features = [
+    "wayland",
+    "x11",
+] }

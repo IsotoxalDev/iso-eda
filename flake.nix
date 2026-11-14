@@ -133,6 +133,15 @@
           buildInputs = spikeBuildInputs;
         } // spikeEnv;
         spikeIcedArtifacts = spikesCraneLib.buildDepsOnly spikeIcedArgs;
+
+        # gpui is a git dependency on the whole Zed workspace (see
+        # docs/adr/001-ui-toolkit.md): expect the first build after adding
+        # this check to take long because it clones Zed into the store.
+        spikeGpuiArgs = spikeCrateArgs "spike-gpui" {
+          nativeBuildInputs = spikeNativeBuildInputs;
+          buildInputs = spikeBuildInputs;
+        } // spikeEnv;
+        spikeGpuiArtifacts = spikesCraneLib.buildDepsOnly spikeGpuiArgs;
       in
       {
         packages = {
@@ -177,6 +186,11 @@
 
           spike-iced-build = spikesCraneLib.buildPackage (spikeIcedArgs // {
             cargoArtifacts = spikeIcedArtifacts;
+            doCheck = false;
+          });
+
+          spike-gpui-build = spikesCraneLib.buildPackage (spikeGpuiArgs // {
+            cargoArtifacts = spikeGpuiArtifacts;
             doCheck = false;
           });
         };
