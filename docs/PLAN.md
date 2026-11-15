@@ -14,7 +14,7 @@ simulation environment, waveform viewer, layout editor, DRC/LVS/PEX with cross-p
 | Topic | Choice |
 | --- | --- |
 | Strategy | Wrap engines as subprocesses first, go native later |
-| UI | Slint shell (GPL-3.0-only option, pinned) + our own wgpu canvas (`canvas-wgpu`, from the M0.2 spike). Decided by ADR-001 on measurements: no toolkit's native primitives were viable (gpui 1408 ms, egui 205 ms, iced 86 ms p95 vs 16.7 ms bar; slint+canvas 5.3 ms). Fallback shell is egui (`egui_wgpu::Callback`); gpui lacks a Linux texture-import hook. Binaries are GPL-3.0-only while Slint is linked |
+| UI | Slint shell (GPL-3.0-only option, pinned) + our own wgpu canvas (`canvas-wgpu`, from the M0.2 spike). Decided by ADR-001 on measurements: no toolkit's native primitives were viable (gpui 1322 ms, egui 205 ms, iced 98 ms p95 vs 16.7 ms bar; slint+canvas 5.1 ms). Fallback shell is egui (`egui_wgpu::Callback`); gpui lacks a Linux texture-import hook. Binaries are GPL-3.0-only while Slint is linked |
 | Schematic format | xschem `.sch` / `.sym` (native, lossless round-trip) |
 | Layout format | GDSII (OASIS read) |
 | Build | Nix flake: devShell, package (crane), checks |
