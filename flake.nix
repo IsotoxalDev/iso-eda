@@ -57,107 +57,6 @@
           cargoExtraArgs = "--package eda-cli --bin iso-eda-cli";
         });
 
-        # --- M0.2 UI-toolkit spikes (docs/adr/001-ui-toolkit.md) ---
-        # Throwaway binaries under spikes/, outside the root Cargo
-        # workspace (root Cargo.toml excludes it). They pin their own,
-        # newer toolchain (gpui/Slint need it) and are proven only to
-        # *compile* in the Nix sandbox: the sandbox has no GPU/display, so
-        # frame times come from spikes/bench.sh on a real machine, never
-        # from `nix flake check`.
-        spikesToolchain = pkgs.rust-bin.fromRustupToolchainFile ./spikes/rust-toolchain.toml;
-        spikesCraneLib = (crane.mkLib pkgs).overrideToolchain (_: spikesToolchain);
-        # crane's cleanCargoSource keeps Cargo.toml/.lock/.rs but strips
-        # other source-tree file types by default; canvas-wgpu's shaders
-        # (include_str!'d .wgsl) and spike-slint's build.rs-compiled
-        # .slint file need to survive the filter too.
-        spikesSrc = pkgs.lib.cleanSourceWith {
-          src = ./spikes;
-          filter = path: type:
-            (spikesCraneLib.filterCargoSources path type)
-            || pkgs.lib.hasSuffix ".wgsl" path
-            || pkgs.lib.hasSuffix ".slint" path;
-        };
-
-        spikeNativeBuildInputs = [ pkgs.pkg-config pkgs.clang pkgs.lld pkgs.cmake ];
-        # Rachana's verified-to-build-gpui-under-Nix list (~/Dev/Rachana
-        # flake.nix); adopted rather than guessing a smaller one.
-        spikeBuildInputs = with pkgs; [
-          openssl
-          fontconfig
-          freetype
-          libxkbcommon
-          wayland
-          wayland-protocols
-          vulkan-loader
-          vulkan-headers
-          libGL
-          mesa
-          alsa-lib
-          libxcb
-          xorg.libX11
-          xorg.libXcursor
-          xorg.libXrandr
-          xorg.libXi
-          xorg.libxcb
-          xorg.xcbutilimage
-          xorg.xcbutilkeysyms
-          xorg.xcbutilwm
-          xorg.xcbutilrenderutil
-        ];
-        spikeEnv = {
-          LIBCLANG_PATH = "${pkgs.llvmPackages.libclang.lib}/lib";
-          VULKAN_SDK = "${pkgs.vulkan-headers}";
-        };
-
-        # A crate living at spikes/<name> with its own Cargo.toml/Cargo.lock
-        # and an empty [workspace] table (so it is not swept into the root
-        # workspace). crane's documented pattern for a package in a
-        # subdirectory with sibling path deps: unpack the whole spikes/
-        # tree, then cd into the one crate before the build proper runs.
-        spikeCrateArgs = name: extra: ({
-          src = spikesSrc;
-          cargoToml = ./spikes/${name}/Cargo.toml;
-          cargoLock = ./spikes/${name}/Cargo.lock;
-          strictDeps = true;
-          pname = name;
-          version = "0.1.0";
-          postUnpack = ''
-            cd $sourceRoot/${name}
-            sourceRoot="."
-          '';
-        } // extra);
-
-        spikeSceneArgs = spikeCrateArgs "scene" { };
-        spikeSceneArtifacts = spikesCraneLib.buildDepsOnly spikeSceneArgs;
-
-        # Build-only checks: the sandbox has no GPU/display, so these only
-        # prove compilation (docs/adr/001-ui-toolkit.md "Nix sandbox").
-        spikeEguiArgs = spikeCrateArgs "spike-egui" {
-          nativeBuildInputs = spikeNativeBuildInputs;
-          buildInputs = spikeBuildInputs;
-        } // spikeEnv;
-        spikeEguiArtifacts = spikesCraneLib.buildDepsOnly spikeEguiArgs;
-
-        spikeIcedArgs = spikeCrateArgs "spike-iced" {
-          nativeBuildInputs = spikeNativeBuildInputs;
-          buildInputs = spikeBuildInputs;
-        } // spikeEnv;
-        spikeIcedArtifacts = spikesCraneLib.buildDepsOnly spikeIcedArgs;
-
-        # gpui is a git dependency on the whole Zed workspace (see
-        # docs/adr/001-ui-toolkit.md): expect the first build after adding
-        # this check to take long because it clones Zed into the store.
-        spikeGpuiArgs = spikeCrateArgs "spike-gpui" {
-          nativeBuildInputs = spikeNativeBuildInputs;
-          buildInputs = spikeBuildInputs;
-        } // spikeEnv;
-        spikeGpuiArtifacts = spikesCraneLib.buildDepsOnly spikeGpuiArgs;
-
-        spikeSlintArgs = spikeCrateArgs "spike-slint" {
-          nativeBuildInputs = spikeNativeBuildInputs;
-          buildInputs = spikeBuildInputs;
-        } // spikeEnv;
-        spikeSlintArtifacts = spikesCraneLib.buildDepsOnly spikeSlintArgs;
       in
       {
         packages = {
@@ -190,30 +89,6 @@
               bash ${./scripts/check-spdx.sh} ${self}
               touch $out
             '';
-
-          spike-scene-test = spikesCraneLib.cargoNextest (spikeSceneArgs // {
-            cargoArtifacts = spikeSceneArtifacts;
-          });
-
-          spike-egui-build = spikesCraneLib.buildPackage (spikeEguiArgs // {
-            cargoArtifacts = spikeEguiArtifacts;
-            doCheck = false;
-          });
-
-          spike-iced-build = spikesCraneLib.buildPackage (spikeIcedArgs // {
-            cargoArtifacts = spikeIcedArtifacts;
-            doCheck = false;
-          });
-
-          spike-gpui-build = spikesCraneLib.buildPackage (spikeGpuiArgs // {
-            cargoArtifacts = spikeGpuiArtifacts;
-            doCheck = false;
-          });
-
-          spike-slint-build = spikesCraneLib.buildPackage (spikeSlintArgs // {
-            cargoArtifacts = spikeSlintArtifacts;
-            doCheck = false;
-          });
         };
 
         devShells.default = pkgs.mkShell {
@@ -221,23 +96,6 @@
             rustToolchain
             pkgs.cargo-nextest
           ];
-        };
-
-        devShells.spikes = pkgs.mkShell {
-          nativeBuildInputs = spikeNativeBuildInputs;
-          buildInputs = [ spikesToolchain pkgs.cargo-nextest pkgs.vulkan-tools ] ++ spikeBuildInputs;
-          inherit (spikeEnv) LIBCLANG_PATH VULKAN_SDK;
-          shellHook = ''
-            export LD_LIBRARY_PATH="${pkgs.lib.makeLibraryPath [
-              pkgs.vulkan-loader
-              pkgs.libGL
-              pkgs.wayland
-              pkgs.libxkbcommon
-              pkgs.libxcb
-              pkgs.xorg.libX11
-            ]}:$LD_LIBRARY_PATH"
-            export SPIKE_FONT="${pkgs.dejavu_fonts}/share/fonts/truetype/DejaVuSans.ttf"
-          '';
         };
       });
 }
