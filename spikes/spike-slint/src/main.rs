@@ -167,7 +167,7 @@ fn main() -> anyhow::Result<()> {
                             toolkit_version: "1.18.1+canvas-wgpu".to_string(),
                             scale: args.scale,
                             viewport_px: (width, height),
-                            scale_factor: 1.0,
+                            scale_factor: f64::from(app.window().scale_factor()),
                             display_server: scene::display_server(),
                             present_mode_requested: "not verified (see docs/adr/001-ui-toolkit.md)"
                                 .to_string(),

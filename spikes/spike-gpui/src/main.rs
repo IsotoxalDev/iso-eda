@@ -36,13 +36,18 @@ struct SpikeView {
 /// Called from inside the `canvas` paint closure once the timer has
 /// recorded enough frames. `process::exit` is final, so there is no need
 /// to guard against a second call.
-fn finish_bench(args: &scene::Args, viewport: scene::Viewport, timer: &scene::FrameTimer) {
+fn finish_bench(
+    args: &scene::Args,
+    viewport: scene::Viewport,
+    timer: &scene::FrameTimer,
+    scale_factor: f64,
+) {
     let meta = scene::ReportMeta {
         toolkit: "gpui".to_string(),
         toolkit_version: "zed@137e677a".to_string(),
         scale: args.scale,
         viewport_px: (viewport.width_px, viewport.height_px),
-        scale_factor: 1.0,
+        scale_factor,
         display_server: scene::display_server(),
         present_mode_requested: "uncontrollable (Mailbox on Wayland, Fifo on X11)".to_string(),
         notes: String::new(),
@@ -199,7 +204,7 @@ impl Render for SpikeView {
 
                 timer.borrow_mut().end_build();
                 if args.bench && timer.borrow().frames_recorded() > args.frames {
-                    finish_bench(&args, viewport, &timer.borrow());
+                    finish_bench(&args, viewport, &timer.borrow(), f64::from(window.scale_factor()));
                 }
             },
         )
