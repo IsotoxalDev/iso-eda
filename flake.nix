@@ -66,7 +66,17 @@
         # from `nix flake check`.
         spikesToolchain = pkgs.rust-bin.fromRustupToolchainFile ./spikes/rust-toolchain.toml;
         spikesCraneLib = (crane.mkLib pkgs).overrideToolchain (_: spikesToolchain);
-        spikesSrc = spikesCraneLib.cleanCargoSource ./spikes;
+        # crane's cleanCargoSource keeps Cargo.toml/.lock/.rs but strips
+        # other source-tree file types by default; canvas-wgpu's shaders
+        # (include_str!'d .wgsl) and spike-slint's build.rs-compiled
+        # .slint file need to survive the filter too.
+        spikesSrc = pkgs.lib.cleanSourceWith {
+          src = ./spikes;
+          filter = path: type:
+            (spikesCraneLib.filterCargoSources path type)
+            || pkgs.lib.hasSuffix ".wgsl" path
+            || pkgs.lib.hasSuffix ".slint" path;
+        };
 
         spikeNativeBuildInputs = [ pkgs.pkg-config pkgs.clang pkgs.lld pkgs.cmake ];
         # Rachana's verified-to-build-gpui-under-Nix list (~/Dev/Rachana
