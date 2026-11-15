@@ -1,7 +1,8 @@
 # ADR-001: UI toolkit for the iso-eda shell and canvas
 
-- Status: proposed
-- Date: 2026-11-14
+- Status: accepted
+- Date: 2026-11-15 (proposed 2026-11-14; accepted 2026-11-15 after the
+  benchmarks in `spikes/results/` were committed in `74830ac`)
 - Milestone: M0.2 — UI spike (GPUI, Slint, iced, egui) drawing 200k rects,
   50k segments, 5k labels with pan/zoom
 
@@ -80,13 +81,30 @@ this machine with the Nix shell in `~/Dev/Rachana/flake.nix`.
   `ShapedLine::paint(&self, origin: Point<Pixels>, line_height: Pixels,
   align: TextAlign, align_width: Option<Pixels>, window: &mut Window,
   cx: &mut App) -> Result<()>`.
-- Headless: `examples/toggle_headless.rs` uses
-  `gpui_platform::application().with_windowing(WindowingRequest::Headless)`.
-  Headless mode **opens no window and renders nothing**; it exists so an app
-  can keep running and later attach to a display. It is not an offscreen
-  renderer. Consequence for methodology: a true offscreen GPU benchmark is
-  not available for gpui, so all four spikes are benchmarked in an
-  unattended *windowed* mode (see Methodology).
+- Headless: at the pinned rev the entry point is
+  `gpui_platform::headless() -> gpui::Application`
+  (`crates/gpui_platform/src/gpui_platform.rs`). The
+  `WindowingRequest::Headless` name quoted here on 2026-11-14 came from Zed
+  `main` and does not exist at the pin (corrected 2026-11-15 by the
+  implementer reading the checkout). Headless mode **opens no window and
+  renders nothing**; it exists so an app can keep running and later attach
+  to a display. It is not an offscreen renderer. Consequence for
+  methodology: a true offscreen GPU benchmark is not available for gpui, so
+  all four spikes are benchmarked in an unattended *windowed* mode (see
+  Methodology).
+- Texture import (read 2026-11-15 from the pinned checkout, for the shell
+  question in Decision): `Window::paint_image(bounds, corner_radii,
+  Arc<RenderImage>, frame_index, grayscale)` takes a `RenderImage`, which
+  wraps **CPU-side** `image::Frame` pixel buffers; gpui copies them into
+  its sprite atlas with `queue.write_texture` each time a new image id is
+  seen. `Window::paint_surface(bounds, CVPixelBuffer)` is
+  `#[cfg(target_os = "macos")]` only. `gpui_wgpu::WgpuContext` has `pub
+  device: Arc<wgpu::Device>` / `pub queue`, but nothing in gpui's public
+  `Window`/`App` API hands an application that context (`gpu_specs()`
+  returns metadata only), and it is Zed's fork of wgpu 29, not crates.io
+  wgpu 30. There is no custom-render-pass hook. So on Linux the only way
+  to show an externally rendered frame inside gpui is GPU -> CPU readback
+  -> `RenderImage` -> `paint_image` -> GPU upload, one round trip per frame.
 - Present mode (from `gpui_wgpu/src/wgpu_renderer.rs`,
   `gpui_linux/src/linux/{wayland,x11}/window.rs`): `WgpuSurfaceConfig
   { preferred_present_mode }` is hard-coded by the platform layer —
@@ -265,20 +283,82 @@ only.
 
 ## Options considered
 
-The table is filled in by the architect after the spikes run. Blank cells
-mean "not yet measured". The Slint row measures Slint shell + our wgpu
-canvas, not Slint primitives (see Context).
+Filled in 2026-11-15 from `spikes/results/*.json` as committed in `74830ac`
+(spikes source at `8bb87d3`). Machine (`spikes/results/environment.txt`):
+NixOS, Linux 7.2.8, Intel Graphics (ARL) integrated GPU (`vulkaninfo`),
+Wayland session (Hyprland), monitor refresh rate not obtainable. 600 frames
+per run, warm-up excluded. The Slint row measures Slint shell + our wgpu
+canvas, not Slint primitives (see Context). All times in ms.
 
 | Toolkit | scale | display | frame_ms p50 / p95 / max | build_ms p95 | fps | notes |
 | --- | --- | --- | --- | --- | --- | --- |
-| gpui | 1 | | | | | |
-| gpui | 4 | | | | | |
-| egui | 1 | | | | | |
-| egui | 4 | | | | | |
-| iced | 1 | | | | | |
-| iced | 4 | | | | | |
-| slint + wgpu canvas | 1 | | | | | |
-| slint + wgpu canvas | 4 | | | | | |
+| gpui `zed@137e677a` | 1 | wayland, 784x711 @1.0, Mailbox (uncontrollable) | 111.5 / **1408.5** / 1627.8 | 1229.8 | 1.88 | build_ms mean 452; all paint on the UI thread |
+| gpui | 4 | wayland | **failed** | — | — | SIGKILL (exit 137) by the compositor's "not responding" watchdog; reproduced on a standalone retry with an 1800 s timeout; not OOM, not a GPU reset (dmesg/journalctl clean) |
+| egui 0.37.0 | 1 | wayland, 383x463 @1.6, AutoNoVsync | 51.3 / **205.1** / 13076.4 | 49.9 | 8.19 | max is a single outlier (p99 248.5) |
+| egui | 4 | wayland | **failed** | — | — | wgpu validation error: `egui_vertex_buffer` size 308 215 840 B > device `max_buffer_size` 268 435 456 B; panicked in `Device::create_buffer` |
+| iced 0.14.0 | 1 | wayland, 1600x1000 @1.0, mailbox | 53.6 / **85.6** / 1515.2 | 42.4 | 16.6 | max is a single outlier (p99 110.3) |
+| iced | 4 | wayland, 1600x1000 @1.0, mailbox | 278.7 / **396.8** / 475.1 | 188.9 | 3.42 | completed; clean standalone retry after a transient first attempt (empty stdout, exit 0) |
+| slint 1.18.1 + canvas-wgpu | 1 | wayland, 388x463 @1.0, present mode not set | 4.25 / **5.33** / 9.83 | 2.86 | 226.7 | **viable** (p95 <= 16.7) |
+| slint 1.18.1 + canvas-wgpu | 4 | wayland, 388x463 @1.0, present mode not set | 19.2 / **30.1** / 35.0 | 27.3 | 49.7 | **comfortable** (p95 <= 33) |
+
+### Reading the results
+
+**Against the bar.** Only Slint + canvas-wgpu is viable (p95 5.33 ms at
+scale 1 against a 16.7 ms bar) and it is also comfortable (30.1 ms at
+scale 4 against 33 ms). No toolkit drawing with its **own** primitives
+comes within an order of magnitude of the bar: iced is 5x over, egui 12x
+over, gpui 84x over. The ADR's fallback clause therefore applies: the
+canvas is our own wgpu renderer and the toolkit question becomes a shell
+question. Independent re-runs by the orchestrating agent on 2026-11-15
+reproduced the Slint numbers (scale 1: 219.9 fps / p95 5.47 ms; scale 4:
+50.7 fps / p95 29.3 ms) and the undersized windows for egui/gpui/slint
+(same sizes each run).
+
+**gpui at scale 4 is a structural result, not a fluke.** gpui builds its
+scene on the main (UI) thread inside `paint`; `build_ms` at scale 1 was
+already 452 ms mean / 1230 ms p95 for 200k `paint_quad` + 50k `paint_path`
+calls. At 800k/200k the per-frame paint blocks the UI thread long enough
+that the Wayland compositor's not-responding watchdog terminates the
+process before 600 frames complete. There is no custom wgpu pass, no
+off-thread paint, and no GPU texture import on Linux to route around it
+(see Context, "Texture import"), so there is no cheap fix inside gpui.
+
+**egui at scale 4 fails on a hard device limit.** egui re-tessellates
+every `Shape` on the CPU every frame (fairness rule 2 forbids retained
+meshes) and uploads one vertex buffer; at 800k rects that buffer is
+308 MB, above the 256 MB `max_buffer_size` of this device. This is a
+ceiling of the native-primitive path, not a bug in the spike. egui's
+`egui_wgpu::Callback` path (our own pass inside egui's render pass) was not
+measured; it would not hit this limit because it does not go through egui's
+tessellator.
+
+**iced** completed both runs without crashing but is 5x over the bar at
+scale 1 and 12x over the comfortable bar at scale 4; its `build_ms` (CPU
+lyon tessellation) alone exceeds the frame budget.
+
+**Window-size caveat (resolved, not an open question).** All four spikes
+request a 1600x1000 logical window identically (gpui
+`WindowBounds::Windowed(Bounds::centered(..))`, egui
+`ViewportBuilder::with_inner_size`, iced `window::Settings { size }`, Slint
+`preferred-width: 1600px; preferred-height: 1000px`). Only iced got it. egui (383x463 @1.6), gpui
+(784x711) and slint (388x463) were measured on much smaller viewports. The
+owner's session is **Hyprland**, a tiling Wayland compositor: a new
+toplevel that does not request floating is tiled into whatever slot the
+layout has free, and the compositor's configure event overrides the
+client's requested size. iced's winit setup happened to receive the full
+size; the other three were tiled. The behaviour is deterministic across
+re-runs. This is an environment interaction, not a defect in any toolkit or
+spike, and it does **not** change the ranking: iced, measured on the
+*largest* viewport, is still 16x slower than slint on the smallest, and
+gpui/egui failed outright at scale 4 on the small viewports (a larger
+viewport could only make them slower). The one thing it does weaken is the
+absolute margin of the slint + canvas-wgpu row: its CPU-side `build_ms`
+(2.86 ms p95) is viewport-independent, but its GPU fill cost would grow
+with a 1600x1000 (8.9x more pixels) target; the GPU share of the measured
+5.33 ms is at most ~2.5 ms, which would need to grow ~5.5x to breach the
+16.7 ms bar. We do not re-run the spikes for this; the shell built in M0.3
+has a real full-size window and the canvas frame time is measured there as
+a matter of course (see Consequences).
 
 ### Option A — gpui (Zed's UI framework), pinned git revision
 
@@ -672,69 +752,204 @@ not in Zed's full list; Slint's `unstable-wgpu-30` API differs from the
 
 ## Decision
 
-**Pending — to be filled in once frame-time benchmarks and Nix build
-validation complete.**
+**iso-eda's canvas is our own wgpu renderer (`canvas-wgpu`, to become the
+draw-list sink in `eda-ui`), and the shell that hosts it is Slint 1.18.x
+under its GPL-3.0-only license option, integrated through
+`BackendSelector::require_wgpu_30` + `set_rendering_notifier` +
+`slint::Image::try_from(wgpu::Texture)` — exactly the configuration the
+Slint spike measured.** PLAN.md's working assumption (gpui + gpui-component,
+Slint as fallback) is reversed: the fallback is the decision.
 
-To be written here after step 11 above: the chosen toolkit, the one reason
-that mattered most (expected to be either "only X met the p95 bar with
-native primitives" or "none did, so the shell choice is driven by license
-and widget set and the canvas is our own wgpu renderer"), and the measured
-numbers it rests on. The decision will cite `spikes/results/*.json` by
-commit hash.
+The one reason that mattered most: **on this workload the canvas is the
+whole problem, and Slint + canvas-wgpu is the only configuration that was
+measured to pass** — p95 5.33 ms at scale 1 and 30.1 ms at scale 4
+(`spikes/results/slint-x1.json`, `slint-x4.json`, commit `74830ac`), while
+every toolkit drawing with its own primitives was 5x to 84x over the bar or
+failed to finish (`iced-x1.json` 85.6 ms, `egui-x1.json` 205.1 ms,
+`gpui-x1.json` 1408.5 ms; `egui-x4.json` and `gpui-x4.json` are recorded
+failures). Once the canvas is ours, the shell's only hard requirement is
+that it can present an externally rendered GPU texture every frame without
+adding cost. Slint does this zero-copy today and that path is what the
+number above was measured through.
+
+Why not the other shells, now that they are being judged as shells only:
+
+- **gpui as shell** (the prior; Apache-2.0; owner's production experience in
+  Rachana; `gpui-component` 0.9.1 — now published under the `gpui-kit`
+  umbrella, Apache-2.0 — has dock layout, tabs, trees, tables). Rejected
+  because, verified from the pinned source on 2026-11-15, gpui on Linux has
+  **no zero-copy texture import and no custom-pass hook**: `paint_surface`
+  is macOS-only, `paint_image` takes CPU pixel buffers, and the wgpu device
+  is not reachable from the public API (and is a wgpu-29 fork, not the
+  wgpu 30 `canvas-wgpu` uses). Hosting the canvas in gpui would mean a
+  GPU -> CPU -> GPU round trip of the whole canvas every frame (6.4 MB at
+  1600x1000, ~16 MB at 1.6x scale, 33 MB on a 4K display), a pipeline
+  stall on the readback, and per-frame atlas churn, none of which was
+  measured — or a patch to gpui's renderer that we carry on a git-pinned
+  fork. The ADR's own rule is to decide on measurements; choosing gpui
+  would be choosing an unmeasured integration path over a measured one on
+  the strength of the prior. The owner's gpui experience and the richer
+  shell widget set are real, and they are what this decision gives up.
+- **egui as shell** (MIT OR Apache-2.0): `egui_wgpu::Callback` runs our pass
+  inside egui's render pass on egui's own wgpu 30 device, so `canvas-wgpu`
+  would work unchanged and zero-copy. Not measured in that configuration;
+  shell widgets (`egui_dock`, `egui_extras`) are thinner than Slint's or
+  gpui-kit's, immediate-mode means the whole UI is re-laid-out on every
+  repaint, and the owner's stated dislike is on record. egui is nonetheless
+  the **designated fallback shell** (see Consequences) because it is the
+  only other candidate with a zero-copy path that needs no toolkit patch
+  and no wgpu-major port.
+- **iced as shell** (MIT): the `shader` widget gives a custom wgpu pass,
+  but on wgpu 27, so `canvas-wgpu` would need a parallel wgpu-27 build;
+  dock/tab widgets are the thinnest of the four; the Elm architecture makes
+  a many-panel IDE verbose. Nothing disqualifying, nothing that beats
+  Slint or egui on the criteria that remain.
+
+What the decision costs, stated once here and expanded under Consequences:
+distributed iso-eda binaries are GPL-3.0-**only** (Slint's free license
+option), not "or later"; the Slint wgpu integration is behind an
+`unstable-wgpu-30` feature flag; and the shell is written in the `.slint`
+DSL, a second UI language next to Rust.
 
 ## Consequences
 
-General consequences that hold whichever way the data falls:
+### Architecture
 
-- `eda-render` stays toolkit-independent and emits a per-frame draw list;
-  M1.4's culling/LOD design assumes the toolkit (or our canvas) can take a
-  draw list of the order measured here. The measured `build_ms` sets the
-  budget `eda-render` has for culling before the frame is late.
-- `spikes/` is deleted once this ADR is `accepted` (the winner's lessons
-  move into `eda-ui` at M0.3; the results JSON and this ADR are the record).
-  Until then the spike checks lengthen `nix flake check` noticeably (Zed
-  clone, wgpu, Slint compiler).
-- The spikes toolchain (1.98.1) will drive the main workspace's pin up when
-  the chosen toolkit is wired into `eda-ui`; a separate ADR is not needed
-  for that, note it in the M0.3 report.
+- The canvas is ours. `canvas-wgpu` (instanced rects, screen-space hairline
+  quads, `ab_glyph` R8 atlas, three WGSL pipelines, wgpu 30) is the seed of
+  the draw-list sink in `eda-ui`. `eda-render` stays toolkit-independent
+  and emits a per-frame draw list; the measured `build_ms` of the canvas
+  (2.9 ms p95 for 255k primitives at scale 1, 27 ms at scale 4) is the
+  upload cost `eda-render`'s culling/LOD (M1.4) must fit under, and shows
+  that at ~1M primitives culling is mandatory, not optional.
+- The shell is Slint. `eda-ui` owns the `.slint` files, the
+  `set_rendering_notifier` state machine, the texture sized to the `Image`
+  element, and the input mapping from Slint events to `eda-cmd` commands.
+  Only `eda-ui` and `eda-app` depend on `slint`/`slint-build`/`wgpu`
+  (CLAUDE.md rule unchanged).
+- The main workspace toolchain pin (`1.82.0`) rises to at least Slint's
+  MSRV (`1.92`) when M0.3 wires the shell in; the spikes used `1.98.1` and
+  that is the recommended pin. Note it in the M0.3 report; no separate ADR.
+- M0.3 ("App shell: window, docks, command palette, keymap, theme tokens,
+  empty canvas") now means: Slint window, a dock/split layout written in
+  `.slint` (Slint's standard widgets do not ship a dock — see Not verified),
+  and the canvas texture plumbing ported from `spike-slint` into `eda-ui`.
+  The canvas frame time at the real full-size window is measured in M0.3's
+  manual test as the follow-up to the viewport caveat above; if p95 at
+  1600x1000, scale 1, exceeds 16.7 ms there, the fix is in `canvas-wgpu`
+  (it is our code), not a toolkit change.
 
-If gpui wins: git-pinned dependency and toolchain follow Zed; Apache-2.0
-keeps the GPL story simple; the canvas must live inside gpui's primitive
-set (no custom GPU pass), so if layout-scale GDS later exceeds what
-`paint_quad` can do, the reversal path is "Slint-style shell + own wgpu
-canvas" with gpui as the shell only — which would need gpui to grow a
-texture-import or custom-pass hook, or a patch we carry.
+### Licensing
 
-If Slint wins: distributed binaries are **GPL-3.0-only**, not
-"or-later"; iso-eda source stays GPL-3.0-or-later but release artifacts
-and `THIRD-PARTY.md` must say GPL-3.0 exactly, and a future GPL-4 upgrade
-of the binary would require dropping Slint or buying a commercial license.
-We also own a wgpu canvas renderer from day one (more code, full control).
+- Distributed iso-eda binaries are **GPL-3.0-only**, because Slint is
+  linked under its GPL-3.0-only option. iso-eda's own source files stay
+  `GPL-3.0-or-later`; the combined work's effective license is GPL-3.0
+  exactly. `docs/THIRD-PARTY.md` and release notes must say so. A future
+  move of the binary to a later GPL would require dropping Slint (see
+  Reversal) or a Slint commercial license. This is the single largest
+  cost of the decision and it is accepted deliberately: the alternative
+  was an unmeasured canvas path.
+- `slint`, `slint-build`, `wgpu`, `bytemuck`, `ab_glyph` move from the
+  spikes dependency table into the main workspace at M0.3 under the usual
+  CLAUDE.md sign-off; the licenses are already recorded above.
 
-If egui or iced wins: lowest build risk, crates.io only; the shell widget
-layer (docks, trees, property grids) is thinner and we would write more of
-it; vsync and present mode are under our control.
+### Risks carried forward
 
-Reversal: because the canvas goes through `eda-render`'s draw list, swapping
-the toolkit later costs re-implementing `eda-ui` (panels, input mapping,
-theme tokens) and the toolkit-specific draw-list sink, not the data model,
-commands, or renderer logic. That is the cost this ADR is designed to pay
-at most once.
+- Slint's wgpu integration is behind `unstable-wgpu-30`. Minor Slint
+  releases may change `BackendSelector`/`GraphicsAPI`/`Image::try_from`.
+  Mitigation: pin Slint exactly in `Cargo.lock`, upgrade on purpose, and
+  keep the texture-import plumbing in one module in `eda-ui`.
+- Slint's present mode/vsync is not configurable from our code as far as
+  we verified; in practice the spike ran at 227 fps, so it was not
+  vsync-capped on this Wayland session.
+- Two UI languages (`.slint` + Rust). Mitigated by keeping all behaviour in
+  Rust (`eda-cmd` commands) and only layout/styling in `.slint`.
 
-## Not verified (state of knowledge on 2026-11-14)
+### What the spikes taught, kept here because `spikes/` is deleted
 
-- That gpui at Rachana's rev `137e677a` exposes exactly the `canvas`,
-  `paint_quad`, `paint_path`, `shape_line` and `WindowingRequest` APIs
-  quoted above; they were read from Zed `main`. Rachana builds at that rev
-  with `gpui_platform::application()`, so the crate split exists there.
-- Whether Slint's `WGPUSettings` or winit backend allow disabling vsync.
-- Whether Rachana's system-library list suffices for Slint's
-  `renderer-femtovg-wgpu` and for eframe/iced under winit (expected yes:
-  all use wgpu/Vulkan + libxkbcommon + wayland/X11 libs already present).
-- The SplitMix64 reference vector digits (cited from memory of the Rosetta
-  Code task; the test name tells the implementer to confirm them).
-- Any frame-time number. None exist yet; that is the point of the spikes.
-- crates.io API access was blocked in the design session; versions and
-  MSRVs were read from docs.rs pages and tagged upstream `Cargo.toml`
-  files instead (iced `0.14.0` tag, slint `v1.18.1` tag, egui `main`
-  workspace at 0.37.0, Zed `main`).
+- gpui: immediate painting (`paint_quad`/`paint_path`) is serialized on the
+  UI thread; 200k quads cost ~450 ms of CPU per frame at the pinned rev and
+  800k trip the compositor watchdog. Any future idea of "just use gpui
+  primitives for the canvas" is closed by measurement.
+- egui: CPU re-tessellation produces one vertex buffer per frame; at 800k
+  rects it is 308 MB and exceeds `max_buffer_size` on this device. egui's
+  native painter has a hard ceiling well below layout scale.
+- iced: completes at 800k rects but lyon tessellation alone (189 ms p95)
+  exceeds any frame budget.
+- Two real bugs found during the build, both fixed before the committed
+  numbers: a WGSL `vec3<f32>` uniform alignment mismatch in `canvas-wgpu`
+  (caught by a wgpu validation error — the 16-byte alignment rule for
+  `vec3` in uniform structs), and a `build_ms` timer that wrapped the wrong
+  scope in `spike-iced` and `spike-gpui`. Lesson for `eda-ui`: keep
+  `Uniforms` `#[repr(C)]` with explicit padding and a `size_of` test.
+- On a tiling compositor (Hyprland) a plain toplevel is tiled regardless of
+  the requested size. `eda-app` should not rely on an initial window size
+  for anything; read the actual size from the toolkit after mapping.
+
+### Lifecycle of `spikes/`
+
+With this ADR accepted, `spikes/` is to be deleted except
+`spikes/results/*.json` and `spikes/results/environment.txt`, which stay as
+the evidence this ADR cites. The deletion removes the four
+`spike-*-build` checks and `spike-scene-test` from `nix flake check` and
+with them the Zed clone, three wgpu majors and the Slint compiler from the
+check graph. Before deleting, M0.3's implementer copies `spikes/canvas-wgpu`
+and `spikes/spike-slint/src/main.rs` (texture plumbing) into `eda-ui`; the
+`scene` crate's camera/metrics code is a useful seed for `eda-render`'s
+benchmark harness. The deletion is a separate commit after the owner has
+reviewed this decision.
+
+### Reversal
+
+Because the canvas goes through `eda-render`'s draw list into our own
+wgpu renderer, the shell is replaceable without touching the data model,
+commands, renderer, or `canvas-wgpu`. Swapping shells costs re-implementing
+`eda-ui`'s panels, input mapping and theme tokens, plus the texture/pass
+plumbing. The designated fallback shell is **egui** (`egui_wgpu::Callback`,
+same wgpu major, zero-copy, permissive license), which would also lift the
+GPL-3.0-only constraint. gpui becomes a candidate shell again only if it
+grows a Linux texture-import or custom-pass hook (its macOS-only
+`PaintSurface` primitive shows where such a hook would go) and that hook is
+measured. The trigger for reversal is one of: Slint's `unstable-wgpu-*`
+breaking in a way that is not fixed within one Slint minor release; the
+GPL-3.0-only constraint becoming a concrete blocker for distribution; or
+the full-size canvas measurement in M0.3 failing for a reason in the
+shell's texture path rather than in `canvas-wgpu`.
+
+## Not verified
+
+Resolved since 2026-11-14 (kept for the record):
+
+- gpui at rev `137e677a` does expose `canvas`, `paint_quad`, `paint_path`,
+  `shape_line` (the spike compiled and ran against them). `WindowingRequest`
+  does not exist at that rev; headless is `gpui_platform::headless()`.
+- Rachana's system-library list sufficed for all four spikes under Nix
+  (`nix flake check` green at `8bb87d3` with all four build checks).
+- The SplitMix64 reference vector was confirmed by the implementer's test.
+- Frame-time numbers exist: `spikes/results/*.json`, commit `74830ac`.
+
+Still not verified (state of knowledge on 2026-11-15):
+
+- Whether Slint's `WGPUSettings` or winit backend allow setting the present
+  mode. The measured 227 fps shows the spike was not vsync-capped, but we
+  did not find or set a control.
+- The slint + canvas-wgpu p95 at the full 1600x1000 window. It was measured
+  at 388x463 logical (Hyprland tiling, see "Reading the results"). The
+  ranking does not depend on it; the margin to the 16.7 ms bar does, and
+  M0.3 measures it.
+- The cost of gpui's CPU-readback `paint_image` path for a full-window
+  canvas. Not measured because the decision does not rest on it; it would
+  only matter if gpui were reconsidered as the shell.
+- Whether egui's `egui_wgpu::Callback` path hosts `canvas-wgpu` at the
+  measured speed. Not measured; egui is the fallback, not the choice.
+- Whether Slint's standard widget set or a maintained community component
+  provides a dock/split layout; the M0.3 design assumes it must be written
+  in `.slint`.
+- Monitor refresh rate on the benchmark machine (`environment.txt`: not
+  obtainable); irrelevant to the result because no viable run was near the
+  refresh rate except slint at scale 4 (49.7 fps), and the uncapped
+  227 fps at scale 1 shows no cap was in effect.
+- `gpui-component`'s rename: docs.rs shows `gpui-component` 0.9.1
+  (2026-11-09) with repository `longbridge/gpui-kit` and recommends
+  depending on the `gpui-kit` umbrella crate; whether `gpui-component`
+  will keep being published under its own name was not checked further.

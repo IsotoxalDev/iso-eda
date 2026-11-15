@@ -14,7 +14,7 @@ simulation environment, waveform viewer, layout editor, DRC/LVS/PEX with cross-p
 | Topic | Choice |
 | --- | --- |
 | Strategy | Wrap engines as subprocesses first, go native later |
-| UI | GPUI + gpui-component, pinned revision; confirmed by M0.2; Slint shell + wgpu canvas is the fallback |
+| UI | Slint shell (GPL-3.0-only option, pinned) + our own wgpu canvas (`canvas-wgpu`, from the M0.2 spike). Decided by ADR-001 on measurements: no toolkit's native primitives were viable (gpui 1408 ms, egui 205 ms, iced 86 ms p95 vs 16.7 ms bar; slint+canvas 5.3 ms). Fallback shell is egui (`egui_wgpu::Callback`); gpui lacks a Linux texture-import hook. Binaries are GPL-3.0-only while Slint is linked |
 | Schematic format | xschem `.sch` / `.sym` (native, lossless round-trip) |
 | Layout format | GDSII (OASIS read) |
 | Build | Nix flake: devShell, package (crane), checks |
@@ -40,7 +40,7 @@ iso-eda/
     eda-verify   DRC/LVS/PEX runners + parsers (Phase 3)
     eda-render   toolkit-independent scene -> draw list, culling, LOD, hit test
     eda-script   Python/Tcl bindings (Phase 4)
-    eda-ui       GPUI widgets, panels, themes
+    eda-ui       Slint shell (.slint panels, themes, input -> eda-cmd) + wgpu canvas (draw-list sink)
     eda-app      GUI binary (`iso-eda`)
     eda-cli      headless binary
   tests/corpus/  fetched by Nix at pinned revisions, never committed
