@@ -142,6 +142,12 @@
           buildInputs = spikeBuildInputs;
         } // spikeEnv;
         spikeGpuiArtifacts = spikesCraneLib.buildDepsOnly spikeGpuiArgs;
+
+        spikeSlintArgs = spikeCrateArgs "spike-slint" {
+          nativeBuildInputs = spikeNativeBuildInputs;
+          buildInputs = spikeBuildInputs;
+        } // spikeEnv;
+        spikeSlintArtifacts = spikesCraneLib.buildDepsOnly spikeSlintArgs;
       in
       {
         packages = {
@@ -191,6 +197,11 @@
 
           spike-gpui-build = spikesCraneLib.buildPackage (spikeGpuiArgs // {
             cargoArtifacts = spikeGpuiArtifacts;
+            doCheck = false;
+          });
+
+          spike-slint-build = spikesCraneLib.buildPackage (spikeSlintArgs // {
+            cargoArtifacts = spikeSlintArtifacts;
             doCheck = false;
           });
         };

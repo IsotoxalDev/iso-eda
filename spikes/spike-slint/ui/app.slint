@@ -1,0 +1,56 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// M0.2 spike: Slint shell, our own wgpu canvas (see
+// docs/adr/001-ui-toolkit.md). The `image` element is the render target:
+// Rust renders the shared scene into a wgpu texture and sets it as
+// `texture` every frame via `slint::Image::try_from`.
+//
+// Pan/zoom/escape are polled from Rust each frame via the `pointer-*`
+// and `scroll-delta-y` properties (rather than driven by callbacks), to
+// match the poll-based input handling used by the other three spikes.
+
+export component App inherits Window {
+    in property <image> texture <=> image.source;
+    out property <int> requested-texture-width: image.width / 1px;
+    out property <int> requested-texture-height: image.height / 1px;
+
+    out property <float> pointer-x: touch.mouse-x / 1px;
+    out property <float> pointer-y: touch.mouse-y / 1px;
+    out property <bool> pointer-pressed: touch.pressed;
+    in-out property <float> scroll-delta-y;
+
+    callback escape-pressed();
+
+    preferred-width: 1600px;
+    preferred-height: 1000px;
+    title: "spike-slint (M0.2)";
+
+    image := Image {
+        width: 100%;
+        height: 100%;
+    }
+
+    touch := TouchArea {
+        width: 100%;
+        height: 100%;
+        scroll-event(event) => {
+            scroll-delta-y += event.delta-y / 1px;
+            accept
+        }
+    }
+
+    key-handler := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                escape-pressed();
+                accept
+            } else {
+                reject
+            }
+        }
+    }
+
+    init => {
+        key-handler.focus();
+    }
+}
