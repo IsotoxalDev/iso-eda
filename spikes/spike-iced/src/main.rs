@@ -3,7 +3,7 @@
 //! M0.2 spike: iced drawing the shared `scene::Scene` via the `canvas`
 //! widget. See docs/adr/001-ui-toolkit.md for methodology.
 
-use std::cell::RefCell;
+use std::cell::{Cell, RefCell};
 use std::io::Write;
 
 use iced::mouse;
@@ -17,6 +17,8 @@ enum Message {
     DragEnded,
     Scrolled { at: Point, delta: f32 },
     Escape,
+    Window(iced::window::Id, iced::window::Event),
+    ScaleFactorMeasured(f32),
 }
 
 struct State {
@@ -30,8 +32,15 @@ struct State {
     // measure the trivial message-handling cost instead of the paint cost.
     timer: RefCell<scene::FrameTimer>,
     camera: scene::Camera,
-    viewport: scene::Viewport,
+    // The CLI `--width`/`--height` are only the *requested* window size;
+    // this machine's compositor (Hyprland, tiling) frequently gives the
+    // window a different real size. `draw` is the only place iced reports
+    // the actual rendered `Rectangle`, so this is refreshed from there
+    // every frame (via `Cell`, since `draw` takes `&self`) and is the
+    // only value ever written to a `ReportMeta`/used for `camera_at`.
+    viewport: Cell<scene::Viewport>,
     dragging_from: Option<Point>,
+    scale_factor: f64,
 }
 
 fn color_from(c: scene::Rgba8) -> Color {
@@ -50,18 +59,19 @@ impl State {
             frame_index: 0,
             timer: RefCell::new(scene::FrameTimer::new()),
             camera: scene::Camera::fit(viewport),
-            viewport,
+            viewport: Cell::new(viewport),
             dragging_from: None,
+            scale_factor: 1.0,
         }
     }
 
-    fn update(&mut self, message: Message) {
+    fn update(&mut self, message: Message) -> iced::Task<Message> {
         match message {
             Message::Tick => {
                 if self.args.bench {
-                    self.camera = scene::camera_at(self.frame_index, self.viewport);
                     self.frame_index += 1;
                 }
+                iced::Task::none()
             }
             Message::Dragged(pos) => {
                 if let Some(from) = self.dragging_from {
@@ -71,28 +81,47 @@ impl State {
                     self.camera.center_y -= f64::from(dy) / self.camera.zoom;
                 }
                 self.dragging_from = Some(pos);
+                iced::Task::none()
             }
             Message::DragEnded => {
                 self.dragging_from = None;
+                iced::Task::none()
             }
             Message::Scrolled { at, delta } => {
+                let viewport = self.viewport.get();
                 let world_x = self.camera.center_x
-                    + (f64::from(at.x) - f64::from(self.viewport.width_px) / 2.0)
-                        / self.camera.zoom;
+                    + (f64::from(at.x) - f64::from(viewport.width_px) / 2.0) / self.camera.zoom;
                 let world_y = self.camera.center_y
-                    + (f64::from(at.y) - f64::from(self.viewport.height_px) / 2.0)
-                        / self.camera.zoom;
+                    + (f64::from(at.y) - f64::from(viewport.height_px) / 2.0) / self.camera.zoom;
                 let factor = (f64::from(delta) * 0.0015).exp();
                 self.camera.zoom *= factor;
                 self.camera.center_x = world_x
-                    - (f64::from(at.x) - f64::from(self.viewport.width_px) / 2.0)
-                        / self.camera.zoom;
+                    - (f64::from(at.x) - f64::from(viewport.width_px) / 2.0) / self.camera.zoom;
                 self.camera.center_y = world_y
-                    - (f64::from(at.y) - f64::from(self.viewport.height_px) / 2.0)
-                        / self.camera.zoom;
+                    - (f64::from(at.y) - f64::from(viewport.height_px) / 2.0) / self.camera.zoom;
+                iced::Task::none()
             }
-            Message::Escape => {
-                std::process::exit(0);
+            Message::Escape => std::process::exit(0),
+            // The window's real (OS-reported) HiDPI scale factor is not
+            // settled the instant the window opens: on Wayland it is
+            // negotiated via the fractional-scale protocol shortly after,
+            // and winit reports the pre-negotiation value (1.0) until
+            // then. So this both asks for it once at `Opened` (covers
+            // backends that report it correctly immediately) and keeps
+            // listening for `Rescaled`, which iced emits whenever winit's
+            // own `ScaleFactorChanged` fires (covers the Wayland
+            // negotiation landing after the window is already up).
+            Message::Window(id, iced::window::Event::Opened { .. }) => {
+                iced::window::scale_factor(id).map(Message::ScaleFactorMeasured)
+            }
+            Message::Window(_, iced::window::Event::Rescaled(sf)) => {
+                self.scale_factor = f64::from(sf);
+                iced::Task::none()
+            }
+            Message::Window(..) => iced::Task::none(),
+            Message::ScaleFactorMeasured(sf) => {
+                self.scale_factor = f64::from(sf);
+                iced::Task::none()
             }
         }
     }
@@ -101,12 +130,13 @@ impl State {
     /// `process::exit` is final, so there is no need to guard against a
     /// second call.
     fn finish_bench(&self) {
+        let viewport = self.viewport.get();
         let meta = scene::ReportMeta {
             toolkit: "iced".to_string(),
             toolkit_version: "0.14.0".to_string(),
             scale: self.args.scale,
-            viewport_px: (self.viewport.width_px, self.viewport.height_px),
-            scale_factor: 1.0,
+            viewport_px: (viewport.width_px, viewport.height_px),
+            scale_factor: self.scale_factor,
             display_server: scene::display_server(),
             present_mode_requested: std::env::var("ICED_PRESENT_MODE")
                 .unwrap_or_else(|_| "default".to_string()),
@@ -119,7 +149,10 @@ impl State {
     }
 
     fn subscription(&self) -> iced::Subscription<Message> {
-        iced::window::frames().map(|_| Message::Tick)
+        iced::Subscription::batch([
+            iced::window::frames().map(|_| Message::Tick),
+            iced::window::events().map(|(id, event)| Message::Window(id, event)),
+        ])
     }
 
     fn view(&self) -> Element<'_, Message> {
@@ -143,9 +176,25 @@ impl canvas::Program<Message> for State {
     ) -> Vec<Geometry> {
         self.timer.borrow_mut().begin_frame();
 
+        // `bounds` is the one place iced reports the canvas's *actual*
+        // rendered size; this machine's compositor does not honour the
+        // CLI `--width`/`--height` request, so `self.viewport` (used for
+        // reporting and, in bench mode, for the camera path) is always
+        // refreshed from here rather than from the stale construction
+        // argument.
+        let viewport = scene::Viewport {
+            width_px: bounds.width.max(1.0) as u32,
+            height_px: bounds.height.max(1.0) as u32,
+        };
+        self.viewport.set(viewport);
+
+        let camera = if self.args.bench {
+            scene::camera_at(self.frame_index, viewport)
+        } else {
+            self.camera
+        };
+
         let mut frame = Frame::new(renderer, bounds.size());
-        let camera = self.camera;
-        let viewport = self.viewport;
 
         for r in &self.scene.rects {
             let (x0, y0) = camera.to_screen(viewport, r.x0, r.y0);
