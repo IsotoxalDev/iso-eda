@@ -1,6 +1,0 @@
-uname -a: Linux legion 7.2.8 #1-NixOS SMP PREEMPT_DYNAMIC Fri Sep 25 14:37:14 UTC 2026 x86_64 GNU/Linux
-vulkaninfo adapter: 	deviceName         = Intel(R) Graphics (ARL)
-XDG_SESSION_TYPE: wayland
-display_server (WAYLAND_DISPLAY/DISPLAY check): wayland
-monitor refresh rate: 240.00000Hz (hyprctl monitors, focused monitor)
-spikes git commit: f1eb5ae98d0155f586d0cdb6d16238b7063414a3
