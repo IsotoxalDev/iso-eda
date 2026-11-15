@@ -267,7 +267,7 @@ fn main() -> anyhow::Result<()> {
         let width = px(args.width as f32);
         let height = px(args.height as f32);
 
-        cx.open_window(
+        let window = cx.open_window(
             WindowOptions {
                 titlebar: Some(TitlebarOptions {
                     title: Some("spike-gpui (M0.2)".into()),
@@ -282,8 +282,16 @@ fn main() -> anyhow::Result<()> {
                 ..Default::default()
             },
             |_, cx| cx.new(|_| SpikeView::new(args, text_font)),
-        )
-        .expect("failed to open spike-gpui window");
+        );
+        // `run`'s closure is `FnOnce(&mut App)` with no return value, so a
+        // window-open failure can't be propagated as a `Result`; report it
+        // and quit cleanly instead of panicking (CLAUDE.md: no
+        // `unwrap`/`expect` outside tests).
+        if let Err(err) = window {
+            eprintln!("error: failed to open spike-gpui window: {err:#}");
+            cx.quit();
+            return;
+        }
 
         cx.on_window_closed(|cx, _window_id| {
             cx.quit();
