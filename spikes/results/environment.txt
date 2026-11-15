@@ -2,5 +2,5 @@ uname -a: Linux legion 7.2.8 #1-NixOS SMP PREEMPT_DYNAMIC Fri Sep 25 14:37:14 UT
 vulkaninfo adapter: 	deviceName         = Intel(R) Graphics (ARL)
 XDG_SESSION_TYPE: wayland
 display_server (WAYLAND_DISPLAY/DISPLAY check): wayland
-monitor refresh rate: not obtainable (no xrandr/wlr-randr on PATH)
-spikes git commit: 8bb87d3a03acfa938e57161ec85986ad38e0ba30
+monitor refresh rate: 240.00000Hz (hyprctl monitors, focused monitor)
+spikes git commit: f1eb5ae98d0155f586d0cdb6d16238b7063414a3

@@ -103,6 +103,40 @@ for toolkit in "${toolkits[@]}"; do
   done
 done
 
+# Tries, in order, the compositor/display tools that can report the focused
+# monitor's refresh rate: hyprctl (Hyprland), wlr-randr (other wlroots
+# compositors), xrandr (X11). Only falls back to the "not obtainable"
+# placeholder when none of them is on PATH or none yields a usable value.
+probe_refresh_rate() {
+  if command -v hyprctl >/dev/null 2>&1; then
+    local hz
+    hz="$(hyprctl monitors 2>/dev/null \
+      | grep -m1 -E '@[0-9]+(\.[0-9]+)?[[:space:]]+at[[:space:]]' \
+      | sed -E 's/.*@([0-9]+(\.[0-9]+)?)[[:space:]]+at[[:space:]].*/\1/')"
+    if [ -n "$hz" ]; then
+      echo "${hz}Hz (hyprctl monitors, focused monitor)"
+      return
+    fi
+  fi
+  if command -v wlr-randr >/dev/null 2>&1; then
+    local hz
+    hz="$(wlr-randr 2>/dev/null | grep -m1 -oE '[0-9]+\.[0-9]+ Hz \(current\)' | grep -oE '^[0-9]+\.[0-9]+')"
+    if [ -n "$hz" ]; then
+      echo "${hz}Hz (wlr-randr, current mode)"
+      return
+    fi
+  fi
+  if command -v xrandr >/dev/null 2>&1; then
+    local hz
+    hz="$(xrandr 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\*' | head -n1 | tr -d '*')"
+    if [ -n "$hz" ]; then
+      echo "${hz}Hz (xrandr, current mode)"
+      return
+    fi
+  fi
+  echo "not obtainable (no hyprctl/wlr-randr/xrandr on PATH, or none reported a current mode)"
+}
+
 echo "bench.sh: writing results/environment.txt ..."
 {
   echo "uname -a: $(uname -a)"
@@ -114,7 +148,7 @@ echo "bench.sh: writing results/environment.txt ..."
   fi
   echo "XDG_SESSION_TYPE: ${XDG_SESSION_TYPE:-not set}"
   echo "display_server (WAYLAND_DISPLAY/DISPLAY check): $display_server"
-  echo "monitor refresh rate: not obtainable (no xrandr/wlr-randr on PATH)"
+  echo "monitor refresh rate: $(probe_refresh_rate)"
   echo "spikes git commit: $(git -C "$script_dir" rev-parse HEAD 2>/dev/null || echo unknown)"
 } >"$results_dir/environment.txt"
 
