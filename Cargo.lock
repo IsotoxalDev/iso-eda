@@ -964,7 +964,6 @@ version = "0.1.0"
 name = "eda-ui"
 version = "0.1.0"
 dependencies = [
- "bytemuck",
  "eda-cmd",
  "slint",
  "slint-build",
