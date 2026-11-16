@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# iso-eda keymap preset: Virtuoso-style (docs/PLAN.md: "Bindkey presets:
+# Virtuoso-style and xschem-style"). Same format as xschem.keymap.
+# Differs from it the way Cadence's own defaults differ from xschem's:
+# redo on Ctrl+Y rather than Ctrl+Shift+Z, and no Shift on the palette
+# binding.
+ctrl+p = ui.open_palette
+ctrl+z = edit.undo
+ctrl+y = edit.redo
+ctrl+l = view.toggle_theme
+ctrl+h = app.hello

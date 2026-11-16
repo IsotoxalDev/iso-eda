@@ -1,0 +1,17 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# iso-eda keymap preset: xschem-style (docs/PLAN.md: "Bindkey presets:
+# Virtuoso-style and xschem-style"). Parsed by crates/eda-ui/src/keymap.rs.
+#
+# Format: one binding per line, "<modifiers>+<key> = <command.id>".
+# Modifiers (any order, joined by '+', case-insensitive): ctrl, shift,
+# alt, meta. <key> is matched case-insensitively against the pressed
+# key's text. Blank lines and lines starting with '#' are ignored.
+# "ui.open_palette" is not an eda-cmd command: it is handled by eda-ui
+# itself (opening the command palette is UI chrome, not an undoable
+# change to CommandContext).
+ctrl+shift+p = ui.open_palette
+ctrl+z = edit.undo
+ctrl+shift+z = edit.redo
+ctrl+t = view.toggle_theme
+ctrl+h = app.hello
