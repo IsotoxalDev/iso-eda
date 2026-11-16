@@ -9,7 +9,7 @@ Status: todo / doing / done.
 | --- | --- | --- | --- | --- |
 | M0.1 | Workspace skeleton, flake (dev shell, package, checks), CI, empty crates, GPL headers, LICENSE | S | `nix develop` and `nix flake check` pass on a clean clone | done |
 | M0.2 | UI spike: throwaway GPUI, Slint, iced and egui binaries drawing 200k rects, 50k segments, 5k labels with pan/zoom | F (analysis + ADR-001), S (the four binaries) | Frame times recorded; ADR-001 states the choice | done (ADR-001 accepted 2026-11-15: Slint shell + own wgpu canvas; `spikes/` deletion pending owner review) |
-| M0.3 | App shell: window, docks, command palette, keymap file, theme tokens, empty canvas | S | Launches with `nix run`; palette runs a dummy command; theme switch works | todo |
+| M0.3 | App shell: window, docks, command palette, keymap file, theme tokens, empty canvas | F (ADR-002, `eda-cmd` command/undo model — `docs/MODEL-ROUTING.md` lists this "Always Fable"), S (the rest: Slint shell, canvas plumbing, keymap, theme) | Launches with `nix run`; palette runs a dummy command; theme switch works | done (`nix flake check` green; windowed behaviour not visually verified in this sandbox, see `docs/manual-tests/M0.3.md`) |
 
 ## Phase 1 — Schematic + simulate
 
