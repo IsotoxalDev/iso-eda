@@ -100,6 +100,38 @@
           cargoExtraArgs = "--package eda-cli --bin iso-eda-cli";
         });
 
+        # crates/eda-ui/fuzz (M0.3, CLAUDE.md: "Each parser gets a fuzz
+        # target"): a standard cargo-fuzz layout with its own `[workspace]`
+        # and Cargo.lock, so it needs its own vendor dir rather than reusing
+        # `cargoArtifacts` above. This check only *compiles* the fuzz
+        # target (`craneLib.cargoBuild`, the same "build-only, no sandbox
+        # execution" shape ADR-001 used for the M0.2 spike checks) -- it
+        # does not run `cargo fuzz build`/`cargo fuzz run`. `cargo-fuzz`
+        # itself is not packaged into this devShell/sandbox (it typically
+        # wants LLVM sanitizer-coverage flags that this workspace's pinned
+        # stable toolchain does not add by default), and an actual fuzzing
+        # campaign is a developer running it locally, not part of
+        # `nix flake check`. A plain `cargo build --manifest-path
+        # crates/eda-ui/fuzz/Cargo.toml` was confirmed to compile the fuzz
+        # target on the pinned stable 1.98.1 toolchain before wiring this
+        # check in.
+        fuzzCargoVendorDir = craneLib.vendorCargoDeps {
+          cargoLock = ./crates/eda-ui/fuzz/Cargo.lock;
+        };
+
+        fuzzCommonArgs = {
+          inherit src;
+          strictDeps = true;
+          pname = "eda-ui-fuzz";
+          version = "0.0.0";
+          cargoVendorDir = fuzzCargoVendorDir;
+          cargoExtraArgs = "--manifest-path crates/eda-ui/fuzz/Cargo.toml";
+          nativeBuildInputs = uiNativeBuildInputs;
+          buildInputs = uiBuildInputs;
+        };
+
+        fuzzCargoArtifacts = craneLib.buildDepsOnly fuzzCommonArgs;
+
       in
       {
         packages = {
@@ -117,6 +149,10 @@
           });
 
           workspace-fmt = craneLib.cargoFmt (commonArgs // { });
+
+          eda-ui-fuzz-build = craneLib.cargoBuild (fuzzCommonArgs // {
+            cargoArtifacts = fuzzCargoArtifacts;
+          });
 
           workspace-nextest = craneLib.cargoNextest (commonArgs // {
             inherit cargoArtifacts;

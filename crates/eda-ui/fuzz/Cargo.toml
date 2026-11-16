@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# Standard cargo-fuzz layout: this crate lives under crates/eda-ui/fuzz/
+# but is intentionally NOT a member of the root workspace (see the
+# `[workspace]` table below) -- same convention the now-deleted `spikes/`
+# packages used, and for the same reason: cargo-fuzz generates and manages
+# this Cargo.toml/Cargo.lock pair itself, and pulling it into the main
+# workspace's resolution would fight that (plus `libfuzzer-sys` is a
+# dev-only fuzzing dependency, never linked into any shipped binary, per
+# CLAUDE.md's "New dependency" rule -- approved by the owner for this
+# milestone and as the precedent for M1.2's `eda-xschem` parser).
+[package]
+name = "eda-ui-fuzz"
+version = "0.0.0"
+edition = "2021"
+license = "GPL-3.0-or-later"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+
+[dependencies.eda-ui]
+path = ".."
+
+[[bin]]
+name = "keymap"
+path = "fuzz_targets/keymap.rs"
+test = false
+doc = false
+bench = false
+
+[workspace]

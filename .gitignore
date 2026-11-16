@@ -11,3 +11,11 @@ spikes/*/result
 spikes/*/result-*
 spikes/result
 spikes/result-*
+
+# crates/eda-ui/fuzz/ (M0.3): its own `[workspace]`, outside the root
+# workspace's /target, per the standard cargo-fuzz layout. A real fuzzing
+# campaign (cargo fuzz run) also writes corpus/ and artifacts/ dirs here;
+# neither belongs in version control.
+crates/eda-ui/fuzz/target
+crates/eda-ui/fuzz/corpus
+crates/eda-ui/fuzz/artifacts
