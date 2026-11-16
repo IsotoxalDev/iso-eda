@@ -111,9 +111,22 @@ impl App {
                     return true;
                 }
                 let mut host = host.borrow_mut();
-                let ran = host.run(command_id).is_ok();
-                sync_from_context(&window, host.context());
-                ran
+                match host.run(command_id) {
+                    Ok(()) => {
+                        sync_from_context(&window, host.context());
+                        true
+                    }
+                    Err(err) => {
+                        // Keymap ids are not validated against the
+                        // registry (ADR-002 is deliberate here), so a
+                        // typo'd command id in a keymap file surfaces
+                        // here rather than being silently dropped.
+                        let mut cx = host.context().clone();
+                        cx.status_message = Some(err.to_string());
+                        sync_from_context(&window, &cx);
+                        false
+                    }
+                }
             });
         }
 
@@ -156,6 +169,15 @@ fn setup_canvas(window: &MainWindow, host: &Rc<RefCell<CommandHost>>) {
                 if let Some(Ok(image)) = canvas.borrow_mut().before_rendering(width, height) {
                     window.set_texture(image);
                 }
+                // Unconditional every-frame redraw, copied from Slint's
+                // animated `wgpu_texture` example. Harmless for M0.3's
+                // static clear-color canvas beyond needless GPU/CPU/
+                // battery cost at vsync rate while idle, but it also
+                // makes a frame-time measurement meaningless (ADR-001,
+                // docs/adr/001-ui-toolkit.md "Consequences" ~line 922)
+                // since there is nothing to measure against a static
+                // frame. Revisit when M1.4 gives the canvas real content
+                // and a reason to redraw on demand instead of always.
                 window.window().request_redraw();
             }
             slint::RenderingState::RenderingTeardown => canvas.borrow_mut().teardown(),
