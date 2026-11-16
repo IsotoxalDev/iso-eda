@@ -28,7 +28,11 @@ impl Default for UndoStack {
 
 impl UndoStack {
     pub fn with_limit(limit: NonZeroUsize) -> Self {
-        Self { undo: VecDeque::new(), redo: Vec::new(), limit }
+        Self {
+            undo: VecDeque::new(),
+            redo: Vec::new(),
+            limit,
+        }
     }
 
     /// Records an applied edit: clears the redo side, evicts the oldest

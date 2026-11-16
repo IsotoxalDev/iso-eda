@@ -126,7 +126,10 @@ mod tests {
     #[test]
     fn theme_edit_redo_sets_captured_target_not_toggle() {
         let mut edit = ThemeEdit::new(Theme::Dark, Theme::Light);
-        let mut cx = CommandContext { theme: Theme::Light, status_message: None };
+        let mut cx = CommandContext {
+            theme: Theme::Light,
+            status_message: None,
+        };
 
         edit.redo(&mut cx).unwrap();
 

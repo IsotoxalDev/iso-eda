@@ -36,7 +36,10 @@ pub enum CommandError {
 impl CommandError {
     /// Convenience for command bodies: wraps any error as `Failed`.
     pub fn failed(id: &CommandId, source: impl std::error::Error + Send + Sync + 'static) -> Self {
-        Self::Failed { id: id.clone(), source: Box::new(source) }
+        Self::Failed {
+            id: id.clone(),
+            source: Box::new(source),
+        }
     }
 }
 
@@ -67,15 +70,22 @@ mod tests {
         let unknown = CommandError::UnknownCommand(id.clone());
         assert!(unknown.to_string().contains("app.hello"));
 
-        let failed = CommandError::Failed { id: id.clone(), source: Box::new(TestError) };
+        let failed = CommandError::Failed {
+            id: id.clone(),
+            source: Box::new(TestError),
+        };
         assert!(failed.to_string().contains("app.hello"));
 
-        let undo_failed =
-            CommandError::UndoFailed { label: "Toggle theme".to_owned(), source: Box::new(TestError) };
+        let undo_failed = CommandError::UndoFailed {
+            label: "Toggle theme".to_owned(),
+            source: Box::new(TestError),
+        };
         assert!(undo_failed.to_string().contains("Toggle theme"));
 
-        let redo_failed =
-            CommandError::RedoFailed { label: "Toggle theme".to_owned(), source: Box::new(TestError) };
+        let redo_failed = CommandError::RedoFailed {
+            label: "Toggle theme".to_owned(),
+            source: Box::new(TestError),
+        };
         assert!(redo_failed.to_string().contains("Toggle theme"));
     }
 }

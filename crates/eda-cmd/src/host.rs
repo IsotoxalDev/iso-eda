@@ -20,11 +20,23 @@ pub struct CommandHost {
 impl CommandHost {
     /// default stack
     pub fn new(registry: CommandRegistry, cx: CommandContext) -> Self {
-        Self { registry, undo_stack: UndoStack::default(), cx }
+        Self {
+            registry,
+            undo_stack: UndoStack::default(),
+            cx,
+        }
     }
 
-    pub fn with_undo_stack(registry: CommandRegistry, cx: CommandContext, undo_stack: UndoStack) -> Self {
-        Self { registry, undo_stack, cx }
+    pub fn with_undo_stack(
+        registry: CommandRegistry,
+        cx: CommandContext,
+        undo_stack: UndoStack,
+    ) -> Self {
+        Self {
+            registry,
+            undo_stack,
+            cx,
+        }
     }
 
     /// Builtin registry, default context — what `eda-app` constructs.
@@ -53,7 +65,10 @@ impl CommandHost {
         // `cmd` is still alive, since that takes `&mut self` as a whole; so
         // the outcome is computed in this block and applied afterwards.
         let outcome = {
-            let cmd = self.registry.get(id).ok_or_else(|| CommandError::UnknownCommand(id.clone()))?;
+            let cmd = self
+                .registry
+                .get(id)
+                .ok_or_else(|| CommandError::UnknownCommand(id.clone()))?;
             cmd.run(&mut self.cx)?
         };
         self.apply(outcome)
