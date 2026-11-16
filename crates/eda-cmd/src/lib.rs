@@ -7,11 +7,13 @@ mod command;
 mod context;
 mod error;
 mod id;
+mod registry;
 
 pub use command::*;
 pub use context::*;
 pub use error::*;
 pub use id::*;
+pub use registry::*;
 
 #[test]
 fn crate_name_is_set() {
