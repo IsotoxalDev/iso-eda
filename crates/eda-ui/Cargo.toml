@@ -8,7 +8,9 @@
 # is constrained by Slint's license choice.
 #
 # Per CLAUDE.md, only `eda-ui` and `eda-app` may depend on the UI toolkit;
-# `slint`/`slint-build`/`wgpu`/`bytemuck` are confined to this crate.
+# `slint`/`slint-build`/`wgpu` are confined to this crate. `bytemuck` is
+# ADR-001-approved for M1.4's instanced rect/line/glyph pipelines but not
+# added here: M0.3's canvas is clear-color only (no `Pod` instance data).
 [package]
 name = "eda-ui"
 version = "0.1.0"
@@ -29,7 +31,8 @@ slint = { version = "~1.18.1", default-features = false, features = [
     "compat-1-2",
 ] }
 wgpu = "30"
-bytemuck = { version = "1", features = ["derive"] }
 
 [build-dependencies]
-slint-build = "1.18.1"
+# Tilde-pinned to match `slint` above: a caret requirement here could let
+# `cargo update` move this past the `slint` runtime it generates code for.
+slint-build = "~1.18.1"
