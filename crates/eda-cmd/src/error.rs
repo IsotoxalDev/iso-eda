@@ -39,3 +39,43 @@ impl CommandError {
         Self::Failed { id: id.clone(), source: Box::new(source) }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fmt;
+
+    #[derive(Debug)]
+    struct TestError;
+
+    impl fmt::Display for TestError {
+        fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            write!(f, "synthetic source error")
+        }
+    }
+
+    impl std::error::Error for TestError {}
+
+    /// Each variant's `Display` contains the id/label it names.
+    #[test]
+    fn command_error_display_is_readable() {
+        let id = CommandId::new("app.hello");
+
+        let duplicate = CommandError::DuplicateId(id.clone());
+        assert!(duplicate.to_string().contains("app.hello"));
+
+        let unknown = CommandError::UnknownCommand(id.clone());
+        assert!(unknown.to_string().contains("app.hello"));
+
+        let failed = CommandError::Failed { id: id.clone(), source: Box::new(TestError) };
+        assert!(failed.to_string().contains("app.hello"));
+
+        let undo_failed =
+            CommandError::UndoFailed { label: "Toggle theme".to_owned(), source: Box::new(TestError) };
+        assert!(undo_failed.to_string().contains("Toggle theme"));
+
+        let redo_failed =
+            CommandError::RedoFailed { label: "Toggle theme".to_owned(), source: Box::new(TestError) };
+        assert!(redo_failed.to_string().contains("Toggle theme"));
+    }
+}
