@@ -1,0 +1,31 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// Theme tokens for the shell's own chrome (docks, status bar, palette).
+// Not the canvas: the canvas is cleared by our own wgpu renderer
+// (crates/eda-ui/src/canvas.rs), which picks its own clear color.
+//
+// Per docs/PLAN.md ("Themes from one token file"), every named color used
+// by the `.slint` shell lives here and nowhere else. `name` is driven from
+// Rust (`CommandContext::theme`, via `Theme::as_str()` in eda-cmd) so that
+// `view.toggle_theme` visibly switches the whole shell.
+export global ThemeTokens {
+    in property <string> name: "dark";
+
+    out property <bool> is-light: name == "light";
+
+    out property <color> background: is-light ? #f4f4f6 : #1e1e22;
+    out property <color> foreground: is-light ? #202024 : #e8e8ec;
+    out property <color> muted-foreground: is-light ? #5a5a62 : #a0a0aa;
+    out property <color> accent: is-light ? #2f6fed : #5b9bff;
+
+    out property <color> dock-background: is-light ? #e6e6ea : #2a2a30;
+    out property <color> dock-border: is-light ? #c7c7cf : #3c3c44;
+
+    out property <color> status-background: is-light ? #dcdce2 : #26262c;
+
+    out property <color> palette-background: is-light ? #ffffff : #26262c;
+    out property <color> palette-border: is-light ? #b9b9c3 : #46464e;
+    out property <color> palette-selection: is-light ? #cfe0ff : #3a4a66;
+
+    out property <color> canvas-clear: is-light ? #ffffff : #101014;
+}

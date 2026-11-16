@@ -1,0 +1,101 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+// The command palette: a filterable list of (id, title) pairs populated
+// from Rust via `entries` (from `CommandRegistry::iter()`), with a text
+// filter and a callback that reports the chosen command id back to Rust.
+// Minimal by design for M0.3 (docs/PLAN.md: "Command palette for
+// everything"); no fuzzy ranking, no keyboard up/down selection yet.
+import { LineEdit, ListView } from "std-widgets.slint";
+import { ThemeTokens } from "theme.slint";
+
+export struct PaletteEntry {
+    id: string,
+    title: string,
+}
+
+export component CommandPalette inherits Rectangle {
+    in property <bool> open: false;
+    in property <[PaletteEntry]> entries: [];
+    in-out property <string> filter-text: "";
+
+    // Reports the chosen command id; Rust runs it through `CommandHost`.
+    callback run-command(string);
+    // Reports the new filter text; Rust recomputes `entries`.
+    callback filter-changed(string);
+    callback close();
+
+    visible: open;
+    background: ThemeTokens.palette-background;
+    border-width: 1px;
+    border-color: ThemeTokens.palette-border;
+    border-radius: 6px;
+    drop-shadow-blur: 16px;
+    drop-shadow-color: #00000080;
+
+    scope := FocusScope {
+        key-pressed(event) => {
+            if (event.text == Key.Escape) {
+                root.close();
+                accept
+            } else {
+                reject
+            }
+        }
+
+        VerticalLayout {
+            padding: 8px;
+            spacing: 4px;
+
+            input := LineEdit {
+                placeholder-text: "Type a command…";
+                text <=> root.filter-text;
+                edited(text) => {
+                    root.filter-changed(text);
+                }
+                accepted(text) => {
+                    if (root.entries.length > 0) {
+                        root.run-command(root.entries[0].id);
+                    }
+                }
+            }
+
+            ListView {
+                for entry[i] in root.entries: Rectangle {
+                    height: 28px;
+                    background: row-touch.has-hover ? ThemeTokens.palette-selection : transparent;
+
+                    HorizontalLayout {
+                        padding-left: 6px;
+                        padding-right: 6px;
+                        spacing: 8px;
+                        Text {
+                            text: entry.title;
+                            color: ThemeTokens.foreground;
+                            vertical-alignment: center;
+                            horizontal-stretch: 1;
+                        }
+                        Text {
+                            text: entry.id;
+                            color: ThemeTokens.muted-foreground;
+                            vertical-alignment: center;
+                        }
+                    }
+
+                    row-touch := TouchArea {
+                        clicked => {
+                            root.run-command(entry.id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Grabs keyboard focus (for the filter field) whenever the palette
+    // is opened, so typing works immediately.
+    changed open => {
+        if (open) {
+            input.focus();
+        }
+    }
+}

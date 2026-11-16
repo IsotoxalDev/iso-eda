@@ -1,13 +1,120 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
-// M0.3 placeholder: a minimal Window so `build.rs` has something to
-// compile while crates/eda-ui/src is still being wired up. Replaced by
-// the real shell (docks, canvas, command palette, theme tokens) in the
-// next commit of this milestone.
-export component App inherits Window {
-    title: "iso-eda (M0.3 placeholder)";
+// M0.3 app shell: one window, a left dock placeholder, an empty canvas
+// (an `Image` backed by our own wgpu texture, see
+// crates/eda-ui/src/canvas.rs), a status bar and a command-palette
+// overlay. Docs/PLAN.md: "One window, dockable panels... Command palette
+// for everything... Property editing in a side panel, never modal...
+// Themes from one token file."
+//
+// The texture-import pattern (`set_rendering_notifier` state machine,
+// importing a `wgpu::Texture` via `slint::Image::try_from`) is adapted
+// from Slint's own `examples/wgpu_texture/lib.rs` (MIT), logged in
+// docs/THIRD-PARTY.md.
+import { ThemeTokens } from "theme.slint";
+import { CommandPalette, PaletteEntry } from "palette.slint";
 
-    Text {
-        text: "iso-eda";
+export { PaletteEntry }
+
+export component App inherits Window {
+    // Driven from Rust by `CommandContext::theme` (`eda_cmd::Theme::as_str()`).
+    in property <string> theme <=> ThemeTokens.name;
+
+    // The canvas. `texture` is set every frame from Rust once the wgpu
+    // render target is ready; the requested-* properties are read back by
+    // Rust so the texture is sized to the real `Image` element, not to a
+    // requested window size that a tiling compositor may not honor.
+    in property <image> texture <=> canvas.source;
+    out property <int> requested-texture-width: canvas.width / 1px;
+    out property <int> requested-texture-height: canvas.height / 1px;
+
+    in property <string> status-message: "Ready";
+
+    in property <[PaletteEntry]> palette-entries: [];
+    in-out property <bool> palette-open: false;
+    in-out property <string> palette-filter: "";
+
+    callback run-command(string);
+    callback palette-filter-changed(string);
+    // Reports a pressed key (text + modifiers) to Rust's keymap lookup.
+    // Returns true when a command was dispatched, so Slint's own
+    // FocusScope knows whether to `accept` or `reject` the event.
+    callback key-pressed(string, bool, bool, bool, bool) -> bool;
+
+    preferred-width: 1600px;
+    preferred-height: 1000px;
+    title: "iso-eda";
+    background: ThemeTokens.background;
+
+    VerticalLayout {
+        HorizontalLayout {
+            Rectangle {
+                width: 220px;
+                background: ThemeTokens.dock-background;
+                border-width: 1px;
+                border-color: ThemeTokens.dock-border;
+
+                VerticalLayout {
+                    padding: 8px;
+                    alignment: start;
+                    Text {
+                        text: "Library";
+                        color: ThemeTokens.foreground;
+                        font-weight: 700;
+                    }
+                }
+            }
+
+            canvas := Image {
+                horizontal-stretch: 1;
+                vertical-stretch: 1;
+            }
+        }
+
+        Rectangle {
+            height: 28px;
+            background: ThemeTokens.status-background;
+
+            Text {
+                text: root.status-message;
+                color: ThemeTokens.foreground;
+                vertical-alignment: center;
+                x: 8px;
+            }
+        }
+    }
+
+    palette := CommandPalette {
+        x: (root.width - self.width) / 2;
+        y: 80px;
+        width: 480px;
+        height: 320px;
+        open: root.palette-open;
+        entries: root.palette-entries;
+        filter-text <=> root.palette-filter;
+        run-command(id) => {
+            root.run-command(id);
+            root.palette-open = false;
+        }
+        filter-changed(text) => {
+            root.palette-filter-changed(text);
+        }
+        close() => {
+            root.palette-open = false;
+        }
+    }
+
+    key-handler := FocusScope {
+        key-pressed(event) => {
+            if (root.key-pressed(event.text, event.modifiers.control, event.modifiers.shift, event.modifiers.alt, event.modifiers.meta)) {
+                accept
+            } else {
+                reject
+            }
+        }
+    }
+
+    init => {
+        key-handler.focus();
     }
 }
