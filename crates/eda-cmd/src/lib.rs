@@ -8,12 +8,14 @@ mod context;
 mod error;
 mod id;
 mod registry;
+mod undo;
 
 pub use command::*;
 pub use context::*;
 pub use error::*;
 pub use id::*;
 pub use registry::*;
+pub use undo::*;
 
 #[test]
 fn crate_name_is_set() {
