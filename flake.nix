@@ -29,6 +29,36 @@
 
         src = craneLib.cleanCargoSource ./.;
 
+        # `eda-ui`/`eda-app` link Slint (GPL-3.0-only option) + wgpu for the
+        # M0.3 shell and canvas. This is the same system-library set ADR-001
+        # recorded working for the M0.2 spikes' `devShells.spikes` (deleted
+        # in 8e28d49/443dd94 along with `spikes/`), now adopted permanently
+        # since the dependency itself moved into the main workspace. No
+        # clang/cmake/lld/libclang: those were only needed for gpui's C
+        # deps, which this project does not use.
+        uiNativeBuildInputs = [ pkgs.pkg-config ];
+        uiBuildInputs = with pkgs; [
+          fontconfig
+          freetype
+          libxkbcommon
+          wayland
+          wayland-protocols
+          vulkan-loader
+          vulkan-headers
+          libGL
+          mesa
+          libxcb
+          xorg.libX11
+          xorg.libXcursor
+          xorg.libXrandr
+          xorg.libXi
+          xorg.libxcb
+          xorg.xcbutilimage
+          xorg.xcbutilkeysyms
+          xorg.xcbutilwm
+          xorg.xcbutilrenderutil
+        ];
+
         commonArgs = {
           inherit src;
           strictDeps = true;
@@ -37,6 +67,9 @@
           # silence the "will use a placeholder value" evaluation warnings.
           pname = "iso-eda-workspace";
           version = "0.1.0";
+
+          nativeBuildInputs = uiNativeBuildInputs;
+          buildInputs = uiBuildInputs;
         };
 
         cargoArtifacts = craneLib.buildDepsOnly commonArgs;
@@ -95,7 +128,21 @@
           packages = [
             rustToolchain
             pkgs.cargo-nextest
-          ];
+          ] ++ uiNativeBuildInputs ++ uiBuildInputs;
+
+          # Runtime dlopen targets for Slint's winit backend + wgpu's
+          # Vulkan loader (same list ADR-001 recorded for the M0.2 spikes'
+          # `devShells.spikes`).
+          shellHook = ''
+            export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [
+              pkgs.vulkan-loader
+              pkgs.libGL
+              pkgs.wayland
+              pkgs.libxkbcommon
+              pkgs.xorg.libxcb
+              pkgs.xorg.libX11
+            ]}:$LD_LIBRARY_PATH
+          '';
         };
       });
 }
