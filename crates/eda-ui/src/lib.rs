@@ -4,8 +4,10 @@
 //! input -> `eda-cmd`) and the wgpu canvas it hosts. See
 //! `docs/adr/001-ui-toolkit.md`.
 
+mod canvas;
 mod keymap;
 
+pub use canvas::*;
 pub use keymap::*;
 
 #[test]
