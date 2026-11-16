@@ -306,10 +306,16 @@ mod tests {
         assert!(keymap.lookup("z", true, false, false, false).is_none());
     }
 
-    /// Not a substitute for a fuzz target (none is wired up this
-    /// milestone — see the M0.3 report), but a cheap guard that the
-    /// parser returns `Err` rather than panicking on an assortment of
-    /// malformed input shapes.
+    /// A cheap, fast guard that the parser returns `Err` rather than
+    /// panicking on an assortment of malformed input shapes; the real
+    /// fuzz target is `crates/eda-ui/fuzz/fuzz_targets/keymap.rs`.
+    ///
+    /// Known grammar limitation (not a panic risk): `+`, `=` and `#`
+    /// cannot appear as the bound key, since `+` separates modifiers,
+    /// `=` separates the chord from the command id, and a line starting
+    /// with `#` is a comment. M1.3's zoom-in/out bindings will likely
+    /// want `+`/`-`; revisit the grammar then rather than rediscovering
+    /// this.
     #[test]
     fn parser_never_panics_on_malformed_input() {
         let long_line = "a".repeat(10_000);
