@@ -1,5 +1,35 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+#
+# This crate links Slint under its GPL-3.0-only license option (see
+# docs/adr/001-ui-toolkit.md "Consequences" and "Licensing"): a binary
+# that links this crate is therefore distributable only under GPL-3.0
+# exactly, not "or later". iso-eda's own source files (this crate's
+# included) stay licensed GPL-3.0-or-later; it is the combined work that
+# is constrained by Slint's license choice.
+#
+# Per CLAUDE.md, only `eda-ui` and `eda-app` may depend on the UI toolkit;
+# `slint`/`slint-build`/`wgpu`/`bytemuck` are confined to this crate.
 [package]
 name = "eda-ui"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
+build = "build.rs"
+
+[dependencies]
+eda-cmd = { path = "../eda-cmd" }
+thiserror.workspace = true
+# Tilde requirement, as Slint recommends for its `unstable-*` features
+# (not covered by Slint's usual API stability guarantees). GPL-3.0-only
+# chosen among Slint's triple license (see header comment above).
+slint = { version = "~1.18.1", default-features = false, features = [
+    "backend-winit",
+    "renderer-femtovg-wgpu",
+    "unstable-wgpu-30",
+    "compat-1-2",
+] }
+wgpu = "30"
+bytemuck = { version = "1", features = ["derive"] }
+
+[build-dependencies]
+slint-build = "1.18.1"

@@ -27,7 +27,17 @@
 
         craneLib = (crane.mkLib pkgs).overrideToolchain (_: rustToolchain);
 
-        src = craneLib.cleanCargoSource ./.;
+        # crane's default cargo-source filter only keeps Rust/Cargo files;
+        # `eda-ui` also needs its `.slint` UI sources (compiled by
+        # `build.rs`) and its keymap data files to be present in the
+        # sandboxed build.
+        src = pkgs.lib.cleanSourceWith {
+          src = craneLib.path ./.;
+          filter = path: type:
+            (craneLib.filterCargoSources path type)
+            || (builtins.match ".*\\.slint$" path != null)
+            || (builtins.match ".*/keymap/.*" path != null);
+        };
 
         # `eda-ui`/`eda-app` link Slint (GPL-3.0-only option) + wgpu for the
         # M0.3 shell and canvas. This is the same system-library set ADR-001
