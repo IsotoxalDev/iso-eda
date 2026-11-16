@@ -46,7 +46,10 @@ impl Command for FailingCommand {
     }
 
     fn run(&self, _cx: &mut CommandContext) -> Result<Outcome, CommandError> {
-        Err(CommandError::failed(&self.id(), TestError("synthetic command failure")))
+        Err(CommandError::failed(
+            &self.id(),
+            TestError("synthetic command failure"),
+        ))
     }
 }
 
@@ -158,7 +161,11 @@ fn registry_lists_builtins_sorted_by_id() {
     );
 
     for cmd in registry.iter() {
-        assert!(!cmd.title().is_empty(), "title for {} must not be empty", cmd.id());
+        assert!(
+            !cmd.title().is_empty(),
+            "title for {} must not be empty",
+            cmd.id()
+        );
     }
 }
 
@@ -213,7 +220,10 @@ fn hello_sets_status_and_is_not_undoable() {
     let mut host = CommandHost::with_builtins();
     host.run(&CommandId::new("app.hello")).unwrap();
 
-    assert_eq!(host.context().status_message, Some(HELLO_MESSAGE.to_owned()));
+    assert_eq!(
+        host.context().status_message,
+        Some(HELLO_MESSAGE.to_owned())
+    );
     assert!(!host.undo_stack().can_undo());
     assert_eq!(host.undo().unwrap(), false);
 }
@@ -381,9 +391,13 @@ fn undo_labels_follow_stack() {
 #[test]
 fn run_command_accepts_unregistered_values() {
     let mut host = CommandHost::with_builtins();
-    assert!(host.registry().get(&CommandId::new("test.set_theme")).is_none());
+    assert!(host
+        .registry()
+        .get(&CommandId::new("test.set_theme"))
+        .is_none());
 
-    host.run_command(&SetThemeCommand { to: Theme::Light }).unwrap();
+    host.run_command(&SetThemeCommand { to: Theme::Light })
+        .unwrap();
     assert_eq!(host.context().theme, Theme::Light);
     assert!(host.undo_stack().can_undo());
 
