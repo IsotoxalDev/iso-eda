@@ -117,4 +117,15 @@ export component MainWindow inherits Window {
     init => {
         key-handler.focus();
     }
+
+    // Slint drops the focus item when it becomes invisible (the palette
+    // sets `visible: open` in palette.slint), and nothing else claims
+    // focus afterwards. Without this, every keybinding is dead until the
+    // user clicks the window, for both the Esc path and the run-command
+    // path below (both set `palette-open = false`).
+    changed palette-open => {
+        if (!root.palette-open) {
+            key-handler.focus();
+        }
+    }
 }
