@@ -225,7 +225,7 @@ fn hello_sets_status_and_is_not_undoable() {
         Some(HELLO_MESSAGE.to_owned())
     );
     assert!(!host.undo_stack().can_undo());
-    assert_eq!(host.undo().unwrap(), false);
+    assert!(!host.undo().unwrap());
 }
 
 #[test]
@@ -236,7 +236,7 @@ fn toggle_theme_flips_and_undo_restores() {
     host.run(&CommandId::new("view.toggle_theme")).unwrap();
     assert_eq!(host.context().theme, Theme::Light);
 
-    assert_eq!(host.undo().unwrap(), true);
+    assert!(host.undo().unwrap());
     assert_eq!(host.context().theme, Theme::Dark);
     assert!(host.undo_stack().can_redo());
 }
@@ -249,10 +249,10 @@ fn undo_then_redo_returns_identical_state() {
 
     let snapshot = host.context().clone();
 
-    assert_eq!(host.undo().unwrap(), true);
-    assert_eq!(host.undo().unwrap(), true);
-    assert_eq!(host.redo().unwrap(), true);
-    assert_eq!(host.redo().unwrap(), true);
+    assert!(host.undo().unwrap());
+    assert!(host.undo().unwrap());
+    assert!(host.redo().unwrap());
+    assert!(host.redo().unwrap());
 
     assert_eq!(host.context(), &snapshot);
 }
@@ -264,8 +264,8 @@ fn undo_then_redo_returns_identical_state() {
 #[test]
 fn undo_and_redo_on_empty_stack_are_ok_false() {
     let mut host = CommandHost::with_builtins();
-    assert_eq!(host.undo().unwrap(), false);
-    assert_eq!(host.redo().unwrap(), false);
+    assert!(!(host.undo().unwrap()));
+    assert!(!(host.redo().unwrap()));
 }
 
 #[test]
@@ -276,7 +276,7 @@ fn new_edit_clears_redo() {
     host.run(&CommandId::new("view.toggle_theme")).unwrap();
 
     assert!(!host.undo_stack().can_redo());
-    assert_eq!(host.redo().unwrap(), false);
+    assert!(!(host.redo().unwrap()));
 }
 
 #[test]
@@ -287,7 +287,7 @@ fn non_undoable_command_keeps_redo() {
     host.run(&CommandId::new("app.hello")).unwrap(); // not undoable
 
     assert!(host.undo_stack().can_redo());
-    assert_eq!(host.redo().unwrap(), true);
+    assert!(host.redo().unwrap());
     assert_eq!(host.context().theme, Theme::Light);
 }
 
@@ -305,10 +305,10 @@ fn undo_limit_evicts_oldest() {
 
     assert_eq!(host.undo_stack().undo_len(), 3);
 
-    assert_eq!(host.undo().unwrap(), true);
-    assert_eq!(host.undo().unwrap(), true);
-    assert_eq!(host.undo().unwrap(), true);
-    assert_eq!(host.undo().unwrap(), false);
+    assert!(host.undo().unwrap());
+    assert!(host.undo().unwrap());
+    assert!(host.undo().unwrap());
+    assert!(!(host.undo().unwrap()));
 
     // Five toggles from Dark end at Light; undoing the three surviving
     // edits (toggles 3, 4, 5) lands back on the state after two toggles,
@@ -401,7 +401,7 @@ fn run_command_accepts_unregistered_values() {
     assert_eq!(host.context().theme, Theme::Light);
     assert!(host.undo_stack().can_undo());
 
-    assert_eq!(host.undo().unwrap(), true);
+    assert!(host.undo().unwrap());
     assert_eq!(host.context().theme, Theme::Dark);
 }
 
@@ -424,7 +424,7 @@ fn undo_stack_matches_linear_history_model() {
 
     // Hand-rolled LCG (Numerical Recipes constants); no new dependency.
     let mut lcg_state: u32 = 0x1234_5678;
-    let mut next_u32 = |state: &mut u32| -> u32 {
+    let next_u32 = |state: &mut u32| -> u32 {
         *state = state.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
         *state
     };
