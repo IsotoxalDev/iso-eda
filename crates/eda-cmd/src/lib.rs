@@ -3,10 +3,12 @@
 //! Command and undo model for iso-eda. See
 //! `docs/adr/002-command-undo-model.md` for the design.
 
+mod command;
 mod context;
 mod error;
 mod id;
 
+pub use command::*;
 pub use context::*;
 pub use error::*;
 pub use id::*;
