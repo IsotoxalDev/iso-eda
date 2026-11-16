@@ -21,3 +21,6 @@ members = [
 [workspace.package]
 edition = "2021"
 license = "GPL-3.0-or-later"
+
+[workspace.dependencies]
+thiserror = "2"
