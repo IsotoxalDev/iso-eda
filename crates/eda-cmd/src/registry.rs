@@ -23,10 +23,7 @@ impl CommandRegistry {
     /// All builtins (`app.hello`, `edit.redo`, `edit.undo`, `view.toggle_theme`).
     pub fn with_builtins() -> Self {
         let mut registry = Self::new();
-        // TODO(step 7): replace with the real `builtin_commands()` from
-        // `builtins.rs` once that module exists.
-        let builtins: Vec<Box<dyn Command>> = Vec::new();
-        for cmd in builtins {
+        for cmd in crate::builtins::builtin_commands() {
             let id = cmd.id();
             let inserted = registry.register(cmd).is_ok();
             debug_assert!(inserted, "builtin command ids must be unique: {id}");
