@@ -4,10 +4,14 @@
 //! input -> `eda-cmd`) and the wgpu canvas it hosts. See
 //! `docs/adr/001-ui-toolkit.md`.
 
+mod app;
 mod canvas;
+mod generated;
 mod keymap;
 
+pub use app::{App, AppError};
 pub use canvas::*;
+pub use generated::PaletteEntry;
 pub use keymap::*;
 
 #[test]

@@ -16,7 +16,7 @@ import { CommandPalette, PaletteEntry } from "palette.slint";
 
 export { PaletteEntry }
 
-export component App inherits Window {
+export component MainWindow inherits Window {
     // Driven from Rust by `CommandContext::theme` (`eda_cmd::Theme::as_str()`).
     in property <string> theme <=> ThemeTokens.name;
 
