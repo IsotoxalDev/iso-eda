@@ -88,10 +88,22 @@
           inherit cargoArtifacts;
         });
 
+        # eda-app dlopens Vulkan/Wayland/X11/fontconfig/freetype at runtime
+        # (Slint's winit backend, wgpu's loader, Slint's own font-matching
+        # via fontconfig) in addition to needing them at link time, so the
+        # packaged binary needs its runtime linker search path wrapped —
+        # `buildInputs` alone only covers the build. Without this, `nix run`
+        # fails with e.g. "error while loading shared libraries:
+        # libfontconfig.so.1: cannot open shared object file".
         isoEdaApp = craneLib.buildPackage (commonArgs // {
           inherit cargoArtifacts;
           pname = "iso-eda";
           cargoExtraArgs = "--package eda-app --bin iso-eda";
+          nativeBuildInputs = commonArgs.nativeBuildInputs ++ [ pkgs.makeWrapper ];
+          postInstall = ''
+            wrapProgram $out/bin/iso-eda \
+              --prefix LD_LIBRARY_PATH : ${pkgs.lib.makeLibraryPath uiBuildInputs}
+          '';
         });
 
         isoEdaCli = craneLib.buildPackage (commonArgs // {
@@ -176,18 +188,18 @@
             pkgs.cargo-nextest
           ] ++ uiNativeBuildInputs ++ uiBuildInputs;
 
-          # Runtime dlopen targets for Slint's winit backend + wgpu's
-          # Vulkan loader (same list ADR-001 recorded for the M0.2 spikes'
-          # `devShells.spikes`).
+          # Runtime dlopen targets for Slint's winit backend, wgpu's Vulkan
+          # loader, and Slint's own fontconfig-based font matching. This
+          # used to be a hand-picked subset of `uiBuildInputs` (the list
+          # ADR-001 recorded for the M0.2 spikes' `devShells.spikes`, which
+          # never linked Slint's font stack and so never needed
+          # fontconfig/freetype at runtime); M0.3 added that need and the
+          # subset went stale, breaking `cargo build`-then-run inside this
+          # shell with "libfontconfig.so.1: cannot open shared object
+          # file". Using the same full list this crate builds against
+          # keeps the two from drifting apart again.
           shellHook = ''
-            export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath [
-              pkgs.vulkan-loader
-              pkgs.libGL
-              pkgs.wayland
-              pkgs.libxkbcommon
-              pkgs.xorg.libxcb
-              pkgs.xorg.libX11
-            ]}:$LD_LIBRARY_PATH
+            export LD_LIBRARY_PATH=${pkgs.lib.makeLibraryPath uiBuildInputs}:$LD_LIBRARY_PATH
           '';
         };
       });
