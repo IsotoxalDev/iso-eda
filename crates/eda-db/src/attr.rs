@@ -28,7 +28,7 @@ impl AttributeBag {
     }
 
     /// All matches, in insertion order.
-    pub fn get_all<'a>(&'a self, key: &str) -> impl Iterator<Item = &'a str> + 'a {
+    pub fn get_all<'a>(&'a self, key: &'a str) -> impl Iterator<Item = &'a str> + 'a {
         self.entries
             .iter()
             .filter(move |(k, _)| k == key)
