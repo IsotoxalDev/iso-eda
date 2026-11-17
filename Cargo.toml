@@ -24,3 +24,4 @@ license = "GPL-3.0-or-later"
 
 [workspace.dependencies]
 thiserror = "2"
+proptest = "1"
