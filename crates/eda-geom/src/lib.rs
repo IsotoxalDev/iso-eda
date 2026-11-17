@@ -6,10 +6,12 @@
 
 mod point;
 mod rect;
+mod transform;
 mod unit;
 
 pub use point::*;
 pub use rect::*;
+pub use transform::*;
 pub use unit::*;
 
 #[test]
