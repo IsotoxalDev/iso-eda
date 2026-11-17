@@ -53,10 +53,7 @@ impl Rect {
 
     /// Edge-inclusive: rects that only touch at an edge/corner intersect.
     pub fn intersects(&self, other: &Rect) -> bool {
-        self.x0 <= other.x1
-            && other.x0 <= self.x1
-            && self.y0 <= other.y1
-            && other.y0 <= self.y1
+        self.x0 <= other.x1 && other.x0 <= self.x1 && self.y0 <= other.y1 && other.y0 <= self.y1
     }
 
     pub fn translated(&self, dx: Unit, dy: Unit) -> Rect {

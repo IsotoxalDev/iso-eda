@@ -155,7 +155,7 @@ impl Transform {
     }
 
     /// Transforms all four corners and re-normalizes via `Rect::from_points`
-    /// + `union`. Always axis-aligned again: every `Orientation` is a
+    /// and `union`. Always axis-aligned again: every `Orientation` is a
     /// 90-degree-step map.
     pub fn apply_rect(&self, r: Rect) -> Rect {
         let p00 = self.apply_point(Point::new(r.x0, r.y0));

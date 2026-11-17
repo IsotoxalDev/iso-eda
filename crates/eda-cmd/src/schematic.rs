@@ -61,32 +61,41 @@ impl Edit for Patch {
     fn undo(&mut self, cx: &mut CommandContext) -> Result<(), CommandError> {
         let label = self.label().to_owned();
         let active_cell = cx.design.active_cell.clone();
-        let schematic = cx.design.active_schematic_mut().ok_or_else(|| CommandError::UndoFailed {
-            label: label.clone(),
-            source: Box::new(SchematicEditError::NoActiveSchematic(active_cell)),
-        })?;
+        let schematic =
+            cx.design
+                .active_schematic_mut()
+                .ok_or_else(|| CommandError::UndoFailed {
+                    label: label.clone(),
+                    source: Box::new(SchematicEditError::NoActiveSchematic(active_cell)),
+                })?;
         match self {
             Patch::AddInstance { id, .. } => {
-                schematic.remove_instance(*id).ok_or_else(|| CommandError::UndoFailed {
-                    label: label.clone(),
-                    source: Box::new(SchematicEditError::NoSuchInstance(*id)),
-                })?;
+                schematic
+                    .remove_instance(*id)
+                    .ok_or_else(|| CommandError::UndoFailed {
+                        label: label.clone(),
+                        source: Box::new(SchematicEditError::NoSuchInstance(*id)),
+                    })?;
             }
             Patch::DeleteInstance { id, instance } => {
                 schematic.insert_instance(*id, instance.clone());
             }
             Patch::MoveInstance { id, from, .. } => {
-                let inst = schematic.instance_mut(*id).ok_or_else(|| CommandError::UndoFailed {
-                    label: label.clone(),
-                    source: Box::new(SchematicEditError::NoSuchInstance(*id)),
-                })?;
+                let inst = schematic
+                    .instance_mut(*id)
+                    .ok_or_else(|| CommandError::UndoFailed {
+                        label: label.clone(),
+                        source: Box::new(SchematicEditError::NoSuchInstance(*id)),
+                    })?;
                 inst.transform = *from;
             }
             Patch::AddWire { id, .. } => {
-                schematic.remove_wire(*id).ok_or_else(|| CommandError::UndoFailed {
-                    label: label.clone(),
-                    source: Box::new(SchematicEditError::NoSuchWire(*id)),
-                })?;
+                schematic
+                    .remove_wire(*id)
+                    .ok_or_else(|| CommandError::UndoFailed {
+                        label: label.clone(),
+                        source: Box::new(SchematicEditError::NoSuchWire(*id)),
+                    })?;
             }
         }
         Ok(())
@@ -95,25 +104,32 @@ impl Edit for Patch {
     fn redo(&mut self, cx: &mut CommandContext) -> Result<(), CommandError> {
         let label = self.label().to_owned();
         let active_cell = cx.design.active_cell.clone();
-        let schematic = cx.design.active_schematic_mut().ok_or_else(|| CommandError::RedoFailed {
-            label: label.clone(),
-            source: Box::new(SchematicEditError::NoActiveSchematic(active_cell)),
-        })?;
+        let schematic =
+            cx.design
+                .active_schematic_mut()
+                .ok_or_else(|| CommandError::RedoFailed {
+                    label: label.clone(),
+                    source: Box::new(SchematicEditError::NoActiveSchematic(active_cell)),
+                })?;
         match self {
             Patch::AddInstance { id, instance } => {
                 schematic.insert_instance(*id, instance.clone());
             }
             Patch::DeleteInstance { id, .. } => {
-                schematic.remove_instance(*id).ok_or_else(|| CommandError::RedoFailed {
-                    label: label.clone(),
-                    source: Box::new(SchematicEditError::NoSuchInstance(*id)),
-                })?;
+                schematic
+                    .remove_instance(*id)
+                    .ok_or_else(|| CommandError::RedoFailed {
+                        label: label.clone(),
+                        source: Box::new(SchematicEditError::NoSuchInstance(*id)),
+                    })?;
             }
             Patch::MoveInstance { id, to, .. } => {
-                let inst = schematic.instance_mut(*id).ok_or_else(|| CommandError::RedoFailed {
-                    label: label.clone(),
-                    source: Box::new(SchematicEditError::NoSuchInstance(*id)),
-                })?;
+                let inst = schematic
+                    .instance_mut(*id)
+                    .ok_or_else(|| CommandError::RedoFailed {
+                        label: label.clone(),
+                        source: Box::new(SchematicEditError::NoSuchInstance(*id)),
+                    })?;
                 inst.transform = *to;
             }
             Patch::AddWire { id, wire } => {
@@ -183,9 +199,9 @@ impl Command for MoveInstanceCommand {
             )
         })?;
 
-        let instance = schematic
-            .instance_mut(self.id)
-            .ok_or_else(|| CommandError::failed(&self.id(), SchematicEditError::NoSuchInstance(self.id)))?;
+        let instance = schematic.instance_mut(self.id).ok_or_else(|| {
+            CommandError::failed(&self.id(), SchematicEditError::NoSuchInstance(self.id))
+        })?;
 
         let from = instance.transform;
         instance.transform = self.to;
@@ -220,9 +236,9 @@ impl Command for DeleteInstanceCommand {
             )
         })?;
 
-        let instance = schematic
-            .remove_instance(self.id)
-            .ok_or_else(|| CommandError::failed(&self.id(), SchematicEditError::NoSuchInstance(self.id)))?;
+        let instance = schematic.remove_instance(self.id).ok_or_else(|| {
+            CommandError::failed(&self.id(), SchematicEditError::NoSuchInstance(self.id))
+        })?;
 
         Ok(Outcome::Edit(Box::new(Patch::DeleteInstance {
             id: self.id,

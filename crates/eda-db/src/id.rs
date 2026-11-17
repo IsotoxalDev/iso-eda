@@ -109,7 +109,9 @@ impl<T> Clone for IdAllocator<T> {
 
 impl<T> fmt::Debug for IdAllocator<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("IdAllocator").field("next", &self.next).finish()
+        f.debug_struct("IdAllocator")
+            .field("next", &self.next)
+            .finish()
     }
 }
 

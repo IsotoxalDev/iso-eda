@@ -984,6 +984,8 @@ version = "0.1.0"
 name = "eda-cmd"
 version = "0.1.0"
 dependencies = [
+ "eda-db",
+ "eda-geom",
  "proptest",
  "thiserror 2.0.21",
 ]
@@ -992,6 +994,7 @@ dependencies = [
 name = "eda-db"
 version = "0.1.0"
 dependencies = [
+ "eda-geom",
  "proptest",
 ]
 

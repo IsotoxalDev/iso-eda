@@ -30,7 +30,9 @@ impl Cell {
     }
 
     pub fn schematic(&self) -> Option<&SchematicView> {
-        self.views.get(&ViewKind::Schematic).and_then(View::as_schematic)
+        self.views
+            .get(&ViewKind::Schematic)
+            .and_then(View::as_schematic)
     }
 
     pub fn schematic_mut(&mut self) -> Option<&mut SchematicView> {

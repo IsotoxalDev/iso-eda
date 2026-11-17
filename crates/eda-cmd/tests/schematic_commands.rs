@@ -109,7 +109,8 @@ fn move_instance_undo_restores_previous_transform() {
     let id = first_instance_id(&host);
 
     let t1 = Transform::translation(5, 7);
-    host.run_command(&MoveInstanceCommand { id, to: t1 }).unwrap();
+    host.run_command(&MoveInstanceCommand { id, to: t1 })
+        .unwrap();
     assert_eq!(current_transform(&host, id), t1);
 
     host.undo().unwrap();
@@ -124,7 +125,8 @@ fn move_instance_redo_sets_captured_target_not_a_relative_delta() {
     let id = first_instance_id(&host);
 
     let t1 = Transform::new(Orientation::R90, Point::new(3, -4));
-    host.run_command(&MoveInstanceCommand { id, to: t1 }).unwrap();
+    host.run_command(&MoveInstanceCommand { id, to: t1 })
+        .unwrap();
 
     host.undo().unwrap();
     assert_eq!(current_transform(&host, id), t0);
@@ -164,7 +166,8 @@ fn deleting_then_adding_never_reuses_the_freed_id() {
     add_instance(&mut host, "a", Transform::IDENTITY);
     let id_a = first_instance_id(&host);
 
-    host.run_command(&DeleteInstanceCommand { id: id_a }).unwrap();
+    host.run_command(&DeleteInstanceCommand { id: id_a })
+        .unwrap();
 
     add_instance(&mut host, "b", Transform::IDENTITY);
     let id_b = first_instance_id(&host);
@@ -180,7 +183,8 @@ fn add_wire_undo_then_redo_restores_wire() {
         p1: Point::new(10, 0),
         attributes: AttributeBag::new(),
     };
-    host.run_command(&AddWireCommand { wire: wire.clone() }).unwrap();
+    host.run_command(&AddWireCommand { wire: wire.clone() })
+        .unwrap();
 
     let id = host
         .context()

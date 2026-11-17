@@ -3,9 +3,7 @@
 //! Test list for ADR-003 (`docs/adr/003-schematic-data-model.md`),
 //! `eda-db` section. Public API only.
 
-use eda_db::{
-    AttributeBag, Cell, Design, Instance, Library, SchematicView, View, ViewKind, Wire,
-};
+use eda_db::{AttributeBag, Cell, Design, Instance, Library, SchematicView, View, ViewKind, Wire};
 use eda_geom::{Point, Transform};
 use proptest::prelude::*;
 
@@ -188,10 +186,7 @@ enum Op {
 }
 
 fn arb_op() -> impl Strategy<Value = Op> {
-    prop_oneof![
-        Just(Op::Alloc),
-        (0u8..8).prop_map(Op::Remove),
-    ]
+    prop_oneof![Just(Op::Alloc), (0u8..8).prop_map(Op::Remove),]
 }
 
 proptest! {

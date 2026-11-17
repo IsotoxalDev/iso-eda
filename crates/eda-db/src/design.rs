@@ -23,7 +23,9 @@ impl Design {
     /// `None` if `active_cell` does not name a cell, or that cell has no
     /// schematic view.
     pub fn active_schematic(&self) -> Option<&SchematicView> {
-        self.library.cell(&self.active_cell).and_then(|c| c.schematic())
+        self.library
+            .cell(&self.active_cell)
+            .and_then(|c| c.schematic())
     }
 
     pub fn active_schematic_mut(&mut self) -> Option<&mut SchematicView> {
