@@ -10,6 +10,7 @@ mod error;
 mod host;
 mod id;
 mod registry;
+mod schematic;
 mod undo;
 
 pub use builtins::*;
@@ -19,6 +20,9 @@ pub use error::*;
 pub use host::*;
 pub use id::*;
 pub use registry::*;
+// `Patch` stays out of the public API: it is `pub(crate)`, so this glob
+// only re-exports `SchematicEditError` and the four `Command` types.
+pub use schematic::*;
 pub use undo::*;
 
 #[test]
