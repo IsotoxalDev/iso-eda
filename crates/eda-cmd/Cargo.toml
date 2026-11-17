@@ -6,6 +6,8 @@ license.workspace = true
 
 [dependencies]
 thiserror.workspace = true
+eda-db = { path = "../eda-db" }
+eda-geom = { path = "../eda-geom" }
 
 [dev-dependencies]
 proptest.workspace = true

@@ -129,6 +129,7 @@ mod tests {
         let mut cx = CommandContext {
             theme: Theme::Light,
             status_message: None,
+            ..Default::default()
         };
 
         edit.redo(&mut cx).unwrap();

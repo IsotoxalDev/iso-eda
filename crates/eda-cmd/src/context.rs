@@ -36,4 +36,5 @@ pub struct CommandContext {
     pub theme: Theme,
     /// Last message a command asked the UI to show (status line). Not undoable.
     pub status_message: Option<String>,
+    pub design: eda_db::Design,
 }
