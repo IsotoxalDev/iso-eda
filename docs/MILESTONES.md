@@ -15,7 +15,7 @@ Status: todo / doing / done.
 
 | ID | Task | Tier | Acceptance check | Status |
 | --- | --- | --- | --- | --- |
-| M1.1 | `eda-geom`, `eda-db`, `eda-cmd`: library/cell/view model, schematic objects, command + undo stack | F | Unit + property tests; undo then redo returns identical state | todo |
+| M1.1 | `eda-geom`, `eda-db`, `eda-cmd`: library/cell/view model, schematic objects, command + undo stack | F | Unit + property tests; undo then redo returns identical state | done |
 | M1.2 | `eda-xschem`: read/write `.sch` and `.sym` | F (format note, attribute semantics, Tcl-usage survey), S (parser/writer) | Whole corpus parses; read-write-read lossless; report count of symbols using Tcl expressions | todo |
 | M1.3 | `eda-pdk`: discover sky130A, gf180mcuD, ihp-sg13g2 from `$PDK_ROOT` | S | `iso-eda pdk list` / `pdk info sky130A` correct inside the IIC-OSIC-TOOLS container | todo |
 | M1.4 | `eda-render` + read-only schematic view | F (scene/draw-list/culling design), S (implementation) | Headless PNG snapshots of 20 corpus schematics; manual comparison with xschem | todo |
